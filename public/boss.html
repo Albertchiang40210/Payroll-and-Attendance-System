@@ -1,0 +1,80 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>小籠包店 - 老闆後台系統</title>
+    <style>
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; text-align: center; padding: 40px 20px; background-color: #f4f7f6; color: #333; }
+        .container { max-width: 600px; margin: 0 auto; }
+        .card { background: white; padding: 30px; border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.05); text-align: left; }
+        h2 { margin-top: 0; color: #4caf50; border-bottom: 2px solid #e8f5e9; padding-bottom: 10px; text-align: center; }
+        label { font-weight: bold; display: block; margin-top: 15px; margin-bottom: 5px; }
+        input, button { padding: 12px; margin-top: 5px; font-size: 16px; border-radius: 6px; width: 100%; box-sizing: border-box; border: 1px solid #ccc; }
+        button { background-color: #4caf50; color: white; border: none; cursor: pointer; font-weight: bold; margin-top: 20px; }
+        button:hover { background-color: #388e3c; }
+        table { width: 100%; border-collapse: collapse; margin-top: 20px; background: white; }
+        th, td { border: 1px solid #ddd; padding: 12px; text-align: center; }
+        th { background-color: #f8f9fa; font-weight: bold; }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <div class="card">
+        <h2>💰 月度薪資自動核算後台</h2>
+        
+        <label for="month-input">請選擇查詢月份：</label>
+        <input type="month" id="month-input" value="2026-05">
+        
+        <button onclick="calculateSalary()">自動計算薪資</button>
+        
+        <div id="salary-result-area" style="display:none;">
+            <table id="salary-table">
+                <thead>
+                    <tr>
+                        <th>員工</th>
+                        <th>時薪</th>
+                        <th>總工時</th>
+                        <th>本月應發薪資</th>
+                    </tr>
+                </thead>
+                <tbody id="salary-tbody"></tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<script>
+    async function calculateSalary() {
+        const month = document.getElementById('month-input').value;
+        if (!month) return alert('請選擇月份');
+
+        try {
+            const res = await fetch(`/api/salary?month=${month}`);
+            const data = await res.json();
+            const tbody = document.getElementById('salary-tbody');
+            tbody.innerHTML = ''; 
+            
+            if(data.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="4">⚠️ 該月份暫無完整的出勤打卡紀錄</td></tr>';
+            } else {
+                data.forEach(item => {
+                    const tr = document.createElement('tr');
+                    tr.innerHTML = `
+                        <td><b>${item.name}</b></td>
+                        <td>$${item.hourly_rate}</td>
+                        <td>${item.total_hours} 小時</td>
+                        <td style="color:#e65100; font-weight:bold;">$${item.total_salary} 元</td>
+                    `;
+                    tbody.appendChild(tr);
+                });
+            }
+            document.getElementById('salary-result-area').style.display = 'block';
+        } catch (err) {
+            alert('薪資計算失敗');
+        }
+    }
+</script>
+</body>
+</html>
