@@ -13,12 +13,17 @@ const app = express();
 app.use(express.json());
 app.use(express.static(path.join(__dirname, 'public')));
 
-// 資料庫連線設定 (已寫入您的密碼：P@ssw0rd)
+// 🟢 智慧型主機與資料庫判定：
+// 有 Docker 環境變數就優先讀取環境變數，沒有就退回地端預設值 (localhost / punch_db)
+const dbHost = process.env.DB_HOST || 'localhost';
+const dbName = process.env.DB_NAME || 'punch_db';
+
+// 資料庫連線設定
 const pool = mysql.createPool({
-    host: 'localhost',
+    host: dbHost,          // 🟢 改用智慧型主機變數！
     user: 'root',
     password: 'P@ssw0rd', 
-    database: 'punch_db',
+    database: dbName,      // 🟢 改用智慧型資料庫變數！
     waitForConnections: true,
     connectionLimit: 10
 });
@@ -36,8 +41,8 @@ const swaggerOptions = {
         },
         servers: [
             {
-                url: 'http://localhost:3001',
-                description: '本地開發伺服器',
+                url: 'http://localhost:8003', // 🟢 這裡同步改成對外真正連線的 8003 埠口，方便你點擊測試
+                description: '本地 Docker 開發伺服器',
             },
         ],
     },

@@ -1,0 +1,35 @@
+version: '3.8'
+
+services:
+  # 1. 員工打卡系統的 MySQL 資料庫 (Port: 3310)
+  punch_db:
+    image: mysql:8.0
+    container_name: punch_mysql
+    restart: always
+    environment:
+      MYSQL_ROOT_PASSWORD: P@ssw0rd
+      MYSQL_DATABASE: punch_db                # 🟢 修正：完美對齊原始碼的 punch_db
+    ports:
+      - "3310:3306"
+    volumes:
+      - punch_db_data:/var/lib/mysql
+
+  # 2. 打卡系統的 Node.js 服務 (Port: 8003)
+  punch_backend:
+    image: node:18-slim
+    container_name: punch_web_service
+    restart: always
+    working_dir: /app
+    volumes:
+      - .:/app
+    ports:
+      - "8003:3001"                           # 完美對齊內部的 3001
+    environment:
+      - DB_HOST=punch_db                      # 傳遞正確的容器鄰居主機名稱
+      - DB_NAME=punch_db                      # 傳遞正確的資料庫名稱
+    command: sh -c "npm install && node server.js"
+    depends_on:
+      - punch_db
+
+volumes:
+  punch_db_data:
