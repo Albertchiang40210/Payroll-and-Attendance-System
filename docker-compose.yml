@@ -18,7 +18,7 @@ services:
   punch_backend:
     image: node:18-slim
     container_name: punch_web_service
-    restart: always
+    restart: "no"
     working_dir: /app
     volumes:
       - .:/app
