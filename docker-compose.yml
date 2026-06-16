@@ -5,7 +5,7 @@ services:
   punch_db:
     image: mysql:8.0
     container_name: punch_mysql
-    restart: always
+    restart: "no"
     environment:
       MYSQL_ROOT_PASSWORD: P@ssw0rd
       MYSQL_DATABASE: punch_db                # 🟢 修正：完美對齊原始碼的 punch_db
