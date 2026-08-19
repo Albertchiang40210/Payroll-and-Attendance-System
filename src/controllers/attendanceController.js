@@ -84,3 +84,28 @@ exports.getTodayAttendance = catchAsync(async (req, res) => {
     
     res.json(formattedRows);
 });
+
+exports.aiRecognize = catchAsync(async (req, res) => {
+    const { image_base64 } = req.body;
+    
+    // Simulate AI Processing delay
+    await new Promise(r => setTimeout(r, 1000));
+    
+    // Stub logic: Randomly select an existing employee to mock a successful recognition
+    const users = await prisma.user.findMany({ where: { role: 'EMPLOYEE' } });
+    if (users.length === 0) {
+        return res.status(404).json({ status: 'fail', message: '尚未建立任何員工資料以供辨識測試。' });
+    }
+    
+    const randomUser = users[Math.floor(Math.random() * users.length)];
+    
+    res.json({ 
+        status: 'success', 
+        message: 'AI 視覺辨識成功',
+        data: {
+            recognized_user: randomUser.name,
+            confidence: 0.98,
+            next_action: "您可以呼叫 /api/clock 進行打卡"
+        }
+    });
+});

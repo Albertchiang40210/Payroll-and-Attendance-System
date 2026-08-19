@@ -1,5 +1,7 @@
+const logger = require('../utils/logger');
+
 const errorHandler = (err, req, res, next) => {
-    console.error(`[Error]: ${err.message}`);
+    logger.error(err);
     
     // Check if it's a known operational error or unexpected
     const statusCode = err.statusCode || 500;

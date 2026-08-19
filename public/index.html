@@ -3,416 +3,86 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>小籠包店 - 員工智慧打卡系統</title>
-    <style>
-        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; text-align: center; padding: 20px 10px; background-color: #f4f7f6; color: #333; }
-        .container { max-width: 950px; margin: 0 auto; }
-        .card { background: white; padding: 25px; border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.05); margin-bottom: 20px; text-align: left; }
-        h2 { margin-top: 0; color: #ff9800; border-bottom: 2px solid #fff3e0; padding-bottom: 10px; text-align: center; }
-        .boss-title { color: #4caf50; border-bottom: 2px solid #e8f5e9; }
-        .today-title { color: #0288d1; border-bottom: 2px solid #e1f5fe; margin-bottom: 5px; }
-        .date-sub { text-align: center; font-size: 14px; color: #666; font-weight: bold; margin-bottom: 15px; margin-top: -5px; }
-        label { font-weight: bold; display: block; margin-top: 12px; margin-bottom: 4px; }
-        select, input, button { padding: 14px; margin-top: 5px; font-size: 16px; border-radius: 8px; width: 100%; box-sizing: border-box; border: 1px solid #ccc; transition: all 0.2s; }
-        
-        /* 正常班按鈕顏色 */
-        .btn-in { background-color: #2e7d32; color: white; border: none; font-weight: bold; cursor: pointer; width: 48%; float: left; box-shadow: 0 3px 6px rgba(46,125,50,0.2); }
-        .btn-out { background-color: #0288d1; color: white; border: none; font-weight: bold; cursor: pointer; width: 48%; float: right; box-shadow: 0 3px 6px rgba(2,136,209,0.2); }
-        .btn-in:hover { background-color: #1b5e20; transform: translateY(-1px); }
-        .btn-out:hover { background-color: #01579b; transform: translateY(-1px); }
-        
-        /* 🔥 加班班次按鈕樣式 */
-        .btn-overtime-in { background-color: #e67e22; color: white; border: none; font-weight: bold; cursor: pointer; width: 48%; float: left; box-shadow: 0 3px 6px rgba(230,126,34,0.2); }
-        .btn-overtime-out { background-color: #c62828; color: white; border: none; font-weight: bold; cursor: pointer; width: 48%; float: right; box-shadow: 0 3px 6px rgba(198,40,40,0.2); }
-        .btn-overtime-in:hover { background-color: #d35400; transform: translateY(-1px); }
-        .btn-overtime-out:hover { background-color: #b71c1c; transform: translateY(-1px); }
-        
-        .clear-float { clear: both; }
-
-        .salary-btn { background-color: #4caf50; color: white; border: none; font-weight: bold; cursor: pointer; }
-        .salary-btn:hover { background-color: #388e3c; }
-        
-        .public-query-btn { background-color: #0097a7; color: white; border: none; margin-top: 15px; cursor: pointer; font-weight: bold; width: 48%; float: left; }
-        .public-query-btn:hover { background-color: #006064; }
-        .admin-lock-btn { background-color: #607d8b; color: white; border: none; margin-top: 15px; cursor: pointer; font-weight: bold; width: 48%; float: right; }
-        .admin-lock-btn:hover { background-color: #455a64; }
-
-        .time-display { margin-top: 20px; padding: 15px; border-radius: 8px; display: none; text-align: center; font-size: 18px; font-weight: bold; box-shadow: 0 4px 12px rgba(0,0,0,0.08); animation: fadeIn 0.3s ease-in-out; }
-        @keyframes fadeIn { from { opacity: 0; transform: translateY(-10px); } to { opacity: 1; transform: translateY(0); } }
-
-        .grid-2 { display: grid; grid-template-columns: 1.2fr 0.8fr; gap: 20px; }
-        @media(max-width: 750px) { .grid-2 { grid-template-columns: 1fr; } }
-        
-        table { width: 100%; border-collapse: collapse; margin-top: 15px; background: white; font-size: 14px; border-radius: 6px; overflow: hidden; box-shadow: 0 2px 5px rgba(0,0,0,0.02); }
-        th, td { border: 1px solid #eee; padding: 10px; text-align: center; }
-        th { background-color: #f8f9fa; font-weight: bold; color: #555; }
-        .sub-table-title { font-weight: bold; margin-top: 20px; color: #2e7d32; border-left: 4px solid #4caf50; padding-left: 8px; }
-        .filter-container { margin-top: 10px; margin-bottom: 5px; background-color: #fcf8e3; padding: 12px; border-radius: 6px; border: 1px solid #fbeed5; }
-        .hint { font-size: 13px; color: #666; text-align: center; margin-top: -10px; margin-bottom: 15px; }
-        .action-btn { padding: 5px 10px; font-size: 12px; width: auto; margin: 2px; color: white; border: none; margin-top: 0; border-radius: 4px; cursor: pointer; }
-        .edit-btn { background-color: #0288d1; }
-        .del-btn { background-color: #d32f2f; }
-        
-        .section-title { font-size: 15px; color: #666; font-weight: bold; margin-top: 15px; margin-bottom: 8px; border-left: 4px solid #ff9800; padding-left: 8px; }
-        #boss-section { display: none; } 
-
-        .admin-login-box { display: none; margin-top: 20px; background-color: #eceff1; padding: 20px; border-radius: 8px; border: 1px solid #cfd8dc; box-shadow: inset 0 2px 4px rgba(0,0,0,0.02); animation: fadeIn 0.3s ease-in-out; }
-        .login-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-bottom: 15px; }
-        @media(max-width: 500px) { .login-grid { grid-template-columns: 1fr; } }
-        .btn-login-submit { background-color: #37474f; color: white; border: none; font-weight: bold; cursor: pointer; }
-        .btn-login-submit:hover { background-color: #212121; }
-    </style>
+    <title>點心專賣店 - 人資系統</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="/css/style.css">
 </head>
 <body>
+    <div id="toast" class="toast"></div>
 
-<div class="container">
+    <div class="background-shapes">
+        <div class="shape shape-1"></div>
+        <div class="shape shape-2"></div>
+        <div class="shape shape-3"></div>
+    </div>
 
-    <div class="card">
-        <h2>🥟 員工快捷打卡區</h2>
-        <p class="hint">在店內請直接選取姓名並打卡</p>
-        
-        <label for="employee-select">請選擇您的姓名：</label>
-        <select id="employee-select" style="padding:14px; font-size:18px; font-weight:bold;">
-            <option value="">-- 請選擇人員 --</option>
-        </select>
-        <br><br>
-        
-        <div class="section-title">🌅 正常班次</div>
-        <div style="margin-bottom: 20px;">
-            <button class="btn-in" onclick="submitClock('in', '正常')">☀️ 上班打卡</button>
-            <button class="btn-out" onclick="submitClock('out', '正常')">🌆 下班打卡</button>
-            <div class="clear-float"></div>
-        </div>
-
-        <div class="section-title">🔥 加班時段</div>
-        <div style="margin-bottom: 25px;">
-            <button class="btn-overtime-in" onclick="submitClock('in', '加班')">🔥 加班上班</button>
-            <button class="btn-overtime-out" onclick="submitClock('out', '加班')">🌙 加班下班</button>
-            <div class="clear-float"></div>
-        </div>
-
-        <div id="time-board" class="time-display"></div>
-        
-        <div>
-            <button class="public-query-btn" onclick="togglePublicQuery()">🔍 員工查詢當日紀錄</button>
-            <button class="admin-lock-btn" onclick="toggleLoginBox()">🔐 管理者後台登入</button>
-            <div class="clear-float"></div>
-        </div>
-
-        <div id="admin-login-area" class="admin-login-box">
-            <h3 style="margin-top:0; color:#37474f; text-align:center;">🔑 管理者身份驗證</h3>
-            <div class="login-grid">
-                <div>
-                    <label for="admin-username">管理者帳號：</label>
-                    <input type="text" id="admin-username" placeholder="例如: admin" style="padding:10px;">
+    <!-- Login View -->
+    <div id="login-view" class="view active">
+        <div class="glass-card login-card">
+            <div class="logo">🥟</div>
+            <h1>登入系統</h1>
+            <p>歡迎回到點心專賣店人資管理</p>
+            <form id="login-form">
+                <div class="input-group">
+                    <label for="username">帳號</label>
+                    <input type="text" id="username" required placeholder="請輸入帳號 (預設: admin)">
                 </div>
-                <div>
-                    <label for="admin-password">管理者密碼：</label>
-                    <input type="password" id="admin-password" placeholder="請輸入密碼" style="padding:10px;">
+                <div class="input-group">
+                    <label for="password">密碼</label>
+                    <input type="password" id="password" required placeholder="請輸入密碼 (預設: admin123)">
                 </div>
-            </div>
-            <button class="btn-login-submit" onclick="executeAdminLogin()">確認驗證並登入後台</button>
-        </div>
-
-        <div id="public-query-board" style="display:none; margin-top:20px; background:#e0f7fa; padding:15px; border-radius:8px;">
-            <h3 style="margin-top:0; color:#006064; text-align:center;">☀️ 今日全店打卡時間參考</h3>
-            <p id="public-query-date" style="font-size:14px; color:#004d40; text-align:center; font-weight:bold; margin-top:-5px;"></p>
-            <table>
-                <thead><tr><th>姓名</th><th>今日上班</th><th>今日下班</th></tr></thead>
-                <tbody id="public-query-tbody"></tbody>
-            </table>
+                <button type="submit" class="btn-primary">登入</button>
+            </form>
         </div>
     </div>
 
-    <div id="boss-section">
-        
-        <div class="card" style="border: 1px solid #b3e5fc;">
-            <h2 class="today-title">☀️ 今日出勤即時看</h2>
-            <div id="today-date-str" class="date-sub"></div> 
-            <table>
-                <thead><tr><th>員工姓名</th><th>今天上班時間</th><th>今天下班時間</th></tr></thead>
-                <tbody id="today-attendance-tbody"></tbody>
-            </table>
-        </div>
-
-        <div class="card" style="border: 1px solid #a5d6a7;">
-            <h2 class="boss-title" style="color:#2e7d32; border-bottom:2px solid #e8f5e9;">📅 歷史全月歷史出勤流水帳</h2>
-            <label for="month-input">請選擇查詢月份：</label>
-            <input type="month" id="month-input" value="2026-06" style="width:auto; display:inline-block; margin-right:15px;">
-            <button class="salary-btn" onclick="calculateSalary()" style="width:auto; display:inline-block; padding:10px 20px;">載入該月份出勤與薪資</button>
-            
-            <div id="history-attendance-area" style="display:none; margin-top:15px;">
-                <div class="filter-container">
-                    <label for="filter-employee" style="margin-top:0; color:#8a6d3b; font-size:14px;">🔍 依員工姓名快速篩選：</label>
-                    <select id="filter-employee" onchange="filterAttendanceDetails()" style="padding:8px; font-size:14px; margin-top:4px; width:200px;">
-                        <option value="all">✨ 顯示全店所有員工</option>
-                    </select>
-                </div>
-                <table>
-                    <thead><tr><th>日期</th><th>姓名</th><th>上班打卡</th><th>下班打卡</th><th>當日工時</th></tr></thead>
-                    <tbody id="detail-tbody"></tbody>
-                </table>
+    <!-- Dashboard View -->
+    <div id="dashboard-view" class="view">
+        <nav class="glass-nav">
+            <div class="nav-brand">🥟 點心專賣店 HR</div>
+            <div class="nav-user">
+                <span id="user-name-display">使用者</span>
+                <button id="logout-btn" class="btn-outline">登出</button>
             </div>
-        </div>
+        </nav>
 
-        <div class="grid-2">
-            <div class="card" style="border: 1px solid #ffe082;">
-                <h2 class="boss-title" style="color:#f57c00; border-bottom:2px solid #fff8e1;">💰 月度薪資自動核算</h2>
-                <div id="salary-result-area" style="display:none;">
-                    <table>
-                        <thead><tr><th>員工姓名</th><th>總工時 (小時)</th><th>本月應發薪資</th></tr></thead>
-                        <tbody id="salary-tbody"></tbody>
+        <main class="dashboard-container">
+            <!-- Clock Action Card -->
+            <section class="glass-card dashboard-card">
+                <h2>📍 今日打卡</h2>
+                <div class="clock-actions">
+                    <button class="btn-primary btn-large clock-btn" data-type="in">☀️ 上班打卡</button>
+                    <button class="btn-secondary btn-large clock-btn" data-type="out">🌙 下班打卡</button>
+                </div>
+                <div class="ai-recognition">
+                    <button id="ai-recognize-btn" class="btn-outline">🤖 啟動 AI 視覺打卡 (測試)</button>
+                </div>
+            </section>
+
+            <!-- Admin Only: Today's Attendance -->
+            <section id="admin-section" class="glass-card dashboard-card hidden">
+                <h2>📋 今日出勤總覽 (老闆專用)</h2>
+                <div class="table-container">
+                    <table class="glass-table">
+                        <thead>
+                            <tr>
+                                <th>姓名</th>
+                                <th>出勤類型</th>
+                                <th>上班時間</th>
+                                <th>下班時間</th>
+                            </tr>
+                        </thead>
+                        <tbody id="attendance-tbody">
+                            <!-- Data injected via JS -->
+                        </tbody>
                     </table>
                 </div>
-                <div id="salary-empty-hint" style="color:#999; text-align:center; padding:20px 0;">(請先在上方載入月份資料)</div>
-            </div>
-
-            <div class="card">
-                <h2 class="boss-title">👤 新增員工資料</h2>
-                <label for="new-name">員工姓名：</label>
-                <input type="text" id="new-name" placeholder="例如：張小明">
-                <label for="new-rate">設定時薪：</label>
-                <input type="number" id="new-rate" placeholder="例如：190">
-                <button class="salary-btn" onclick="addEmployee()">確認新增員工</button>
-            </div>
-        </div>
-
-        <div class="card">
-            <h2 class="boss-title">🛠️ 現有員工清單與時薪變更</h2>
-            <table>
-                <thead><tr><th>姓名</th><th>時薪</th><th>操作</th></tr></thead>
-                <tbody id="manage-tbody"></tbody>
-            </table>
-        </div>
-
+            </section>
+        </main>
     </div>
-    
-</div>
 
-<script>
-    let employeeData = [];
-    let currentMonthDetails = []; 
-
-    function getTWDateString() {
-        const now = new Date();
-        const twTime = new Date(now.getTime() + (8 * 60 * 60 * 1000));
-        return `${twTime.toISOString().slice(0, 4)} 年 ${twTime.toISOString().slice(5, 7)} 月 ${twTime.toISOString().slice(8, 10)} 日`;
-    }
-
-    async function togglePublicQuery() {
-        const board = document.getElementById('public-query-board');
-        if (board.style.display === 'block') {
-            board.style.display = 'none';
-        } else {
-            try {
-                const res = await fetch('/api/attendance/today');
-                const data = await res.json();
-                const tbody = document.getElementById('public-query-tbody');
-                tbody.innerHTML = '';
-
-                document.getElementById('public-query-date').textContent = `📅 查詢日期：${getTWDateString()}`;
-
-                if (data.length === 0) {
-                    tbody.innerHTML = '<tr><td colspan="3" style="color:#666; font-style:italic; padding:15px;">今天店內暫時還沒有人打卡喔！</td></tr>';
-                } else {
-                    data.forEach(item => {
-                        const tr = document.createElement('tr');
-                        const typeTag = item.punch_type === '加班' ? ' <span style="color:#e67e22; font-size:11px;">[加班]</span>' : '';
-                        tr.innerHTML = `
-                            <td><b>${item.name}${typeTag}</b></td>
-                            <td style="color:#2e7d32; font-weight:bold;">${item.log_in}</td>
-                            <td style="color:#c62828; font-weight:bold;">${item.log_out || '<span style="color:#9e9e9e; font-weight:normal; font-style:italic;">仍在上班中</span>'}</td>
-                        `;
-                        tbody.appendChild(tr);
-                    });
-                }
-                board.style.display = 'block';
-                board.scrollIntoView({ behavior: 'smooth' });
-            } catch (err) { alert('無法抓取今日紀錄'); }
-        }
-    }
-
-    function toggleLoginBox() {
-        const box = document.getElementById('admin-login-area');
-        box.style.display = box.style.display === 'block' ? 'none' : 'block';
-        if (box.style.display === 'block') box.scrollIntoView({ behavior: 'smooth' });
-    }
-
-    function executeAdminLogin() {
-        const userField = document.getElementById('admin-username').value;
-        const passField = document.getElementById('admin-password').value;
-
-        if (userField === "admin" && passField === "admin123") {
-            document.getElementById('boss-section').style.display = 'block';
-            document.getElementById('today-date-str').textContent = `📅 報表日期：${getTWDateString()}`;
-            alert("🔓 雙重密鑰驗證成功！歡迎大老闆進入中央廚房管理系統。");
-            loadTodayAttendance(); 
-            
-            document.getElementById('admin-username').value = '';
-            document.getElementById('admin-password').value = '';
-            document.getElementById('admin-login-area').style.display = 'none';
-            
-            document.getElementById('boss-section').scrollIntoView({ behavior: 'smooth' });
-        } else {
-            alert("❌ 錯誤：管理者帳號或密碼不匹配，拒絕訪問！");
-        }
-    }
-
-    async function loadTodayAttendance() {
-        try {
-            const res = await fetch('/api/attendance/today');
-            const data = await res.json();
-            const tbody = document.getElementById('today-attendance-tbody');
-            tbody.innerHTML = '';
-            if (data.length === 0) {
-                tbody.innerHTML = '<tr><td colspan="3" style="color:#999; font-style:italic;">今日暫時無人打卡上下班</td></tr>';
-            } else {
-                data.forEach(item => {
-                    const tr = document.createElement('tr');
-                    const showType = item.punch_type === '加班' ? ' <span style="color:#e67e22;">(加班)</span>' : '';
-                    tr.innerHTML = `<td><b>${item.name}${showType}</b></td><td style="color:#2e7d32; font-weight:bold;">${item.log_in}</td><td style="color:#c62828; font-weight:bold;">${item.log_out || '<span style="color:#9e9e9e; font-style:italic;">仍在上班...</span>'}</td>`;
-                    tbody.appendChild(tr);
-                });
-            }
-        } catch (err) { console.error(err); }
-    }
-
-    async function loadEmployees() {
-        try {
-            const res = await fetch('/api/employees');
-            employeeData = await res.json();
-            const select = document.getElementById('employee-select');
-            select.innerHTML = '<option value="">-- 請選擇人員 --</option>';
-            const filterSelect = document.getElementById('filter-employee');
-            filterSelect.innerHTML = '<option value="all">✨ 顯示全店所有員工</option>';
-            const manageTbody = document.getElementById('manage-tbody');
-            manageTbody.innerHTML = '';
-
-            employeeData.forEach(emp => {
-                const opt = document.createElement('option'); opt.value = emp.emp_id; opt.textContent = emp.name; select.appendChild(opt);
-                const filterOpt = document.createElement('option'); filterOpt.value = emp.name; filterOpt.textContent = emp.name; filterSelect.appendChild(filterOpt);
-
-                const tr = document.createElement('tr');
-                tr.innerHTML = `
-                    <td><input type="text" id="edit-name-${emp.emp_id}" value="${emp.name}" style="width:110px; padding:4px;"></td>
-                    <td><input type="number" id="edit-rate-${emp.emp_id}" value="${emp.hourly_rate}" style="width:80px; padding:4px;"></td>
-                    <td><button class="action-btn edit-btn" onclick="updateEmployee(${emp.emp_id})">修改</button><button class="action-btn del-btn" onclick="deleteEmployee(${emp.emp_id})">刪除</button></td>
-                `;
-                manageTbody.appendChild(tr);
-            });
-        } catch (err) { console.error(err); }
-    }
-
-    // 🎯 【前端同步通電】確實把班次類型 punch_type 傳給後端
-    async function submitClock(type, punchType) {
-        const select = document.getElementById('employee-select');
-        const emp_id = select.value;
-        const empName = select.options[select.selectedIndex].text;
-        const board = document.getElementById('time-board');
-        if (!emp_id) return alert('【系統提示】請先選取您的名字再進行打卡！');
-
-        try {
-            const res = await fetch('/api/clock', {
-                method: 'POST', 
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ emp_id, type, punch_type: punchType }) // 👈 精準封裝 punch_type
-            });
-            const data = await res.json();
-            
-            if (res.status === 200) {
-                board.style.backgroundColor = type === 'in' ? '#e8f5e9' : '#ffebee';
-                board.style.color = type === 'in' ? '#2e7d32' : '#c62828';
-                board.style.borderLeft = type === 'in' ? '5px solid #2e7d32' : '5px solid #c62828';
-                board.innerHTML = `🎉 ${empName} 打卡成功！<br><span style="font-size:14px; color:#666;">日期：${getTWDateString()}</span><br>狀態：【${punchType}的 ${type==='in'?'☀️ 上班':'🌙 下班'}】<br>打卡時間：${data.time}`;
-                board.style.display = 'block';
-                select.value = ""; 
-                
-                if(document.getElementById('public-query-board').style.display === 'block') {
-                    togglePublicQuery(); 
-                    togglePublicQuery(); 
-                }
-                if(document.getElementById('boss-section').style.display === 'block') loadTodayAttendance();
-            } else { 
-                alert(data.message || data.error || '打卡失敗，請檢查後端日誌！'); 
-            }
-        } catch (err) { 
-            alert('打卡連線失敗，請確認 Docker 服務是否正常開機！'); 
-        }
-    }
-
-    async function calculateSalary() {
-        const month = document.getElementById('month-input').value;
-        if (!month) return alert('請選擇月份');
-        try {
-            const res = await fetch(`/api/salary?month=${month}`);
-            const data = await res.json();
-            currentMonthDetails = data.details;
-            document.getElementById('filter-employee').value = 'all';
-
-            const salaryTbody = document.getElementById('salary-tbody');
-            salaryTbody.innerHTML = ''; 
-            if(data.summary.length === 0) {
-                salaryTbody.innerHTML = '<tr><td colspan="3">⚠️ 該月無統計數據</td></tr>';
-            } else {
-                data.summary.forEach(item => {
-                    const tr = document.createElement('tr');
-                    tr.innerHTML = `<td><b>${item.name}</b></td><td>${item.total_hours} 小時</td><td style="color:#e65100; font-weight:bold;">$${item.total_salary}</td>`;
-                    salaryTbody.appendChild(tr);
-                });
-            }
-            document.getElementById('salary-empty-hint').style.display = 'none';
-            document.getElementById('salary-result-area').style.display = 'block';
-
-            renderDetailTable(currentMonthDetails);
-            document.getElementById('history-attendance-area').style.display = 'block';
-        } catch (err) { alert('數據讀取失敗'); }
-    }
-
-    function renderDetailTable(records) {
-        const detailTbody = document.getElementById('detail-tbody');
-        detailTbody.innerHTML = '';
-        if(records.length === 0) {
-            detailTbody.innerHTML = '<tr><td colspan="5">⚠️ 暫無打卡明細紀錄</td></tr>';
-            return;
-        }
-        records.forEach(item => {
-            const tr = document.createElement('tr');
-            const showType = item.punch_type ? ` (${item.punch_type})` : '';
-            tr.innerHTML = `<td>${item.work_date.slice(5, 10)}</td><td><b>${item.name}</b></td><td style="color:#2e7d32;">${item.log_in}${showType}</td><td style="color:#c62828;">${item.log_out || '<span style="color:#9e9e9e; font-style:italic;">未下班</span>'}</td><td>${item.day_hours !== null ? item.day_hours + ' 小時' : '缺失下班卡'}</td>`;
-            detailTbody.appendChild(tr);
-        });
-    }
-
-    function filterAttendanceDetails() {
-        const targetName = document.getElementById('filter-employee').value;
-        if (targetName === 'all') renderDetailTable(currentMonthDetails);
-        else renderDetailTable(currentMonthDetails.filter(item => item.name === targetName));
-    }
-
-    async function addEmployee() {
-        const name = document.getElementById('new-name').value; const hourly_rate = document.getElementById('new-rate').value;
-        if(!name || !hourly_rate) return alert('請填寫姓名與時薪');
-        try {
-            const res = await fetch('/api/employees', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ name, hourly_rate }) });
-            const data = await res.json(); alert(data.message); document.getElementById('new-name').value = ''; document.getElementById('new-rate').value = ''; loadEmployees(); 
-        } catch (err) { alert('新增失敗'); }
-    }
-    async function updateEmployee(id) {
-        const name = document.getElementById(`edit-name-${id}`).value; const hourly_rate = document.getElementById(`edit-rate-${id}`).value;
-        try {
-            const res = await fetch(`/api/employees/${id}`, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ name, hourly_rate }) });
-            const data = await res.json(); alert(data.message); loadEmployees();
-        } catch (err) { alert('修改失敗'); }
-    }
-    async function deleteEmployee(id) {
-        if(!confirm('確定要刪除這位員工嗎？')) return;
-        try {
-            const res = await fetch(`/api/employees/${id}`, { method: 'DELETE' });
-            const data = await res.json(); alert(data.message); loadEmployees();
-        } catch (err) { alert('刪除失敗'); }
-    }
-
-    loadEmployees();
-</script>
+    <script src="/js/app.js"></script>
 </body>
 </html>
