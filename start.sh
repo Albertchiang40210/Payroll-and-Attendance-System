@@ -4,7 +4,7 @@
 killall ngrok 2>/dev/null
 
 # 2. 在背景默默啟動打卡系統的後端伺服器 (3001 埠)
-node server.js &
+npm start &
 
 # 3. 🔥 在背景啟動 ngrok，並直接綁定媽媽的專屬固定網址！
 ngrok http 3001 --url=uncrown-pacific-sprout.ngrok-free.dev &

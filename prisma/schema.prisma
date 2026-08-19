@@ -1,0 +1,73 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "mysql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id          Int      @id @default(autoincrement())
+  username    String   @unique // For login
+  password    String   // Hashed password
+  name        String
+  hourly_rate Float    @default(0)
+  role        Role     @default(EMPLOYEE)
+  
+  attendances Attendance[]
+  leaves      Leave[]
+  shifts      Shift[]
+
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+enum Role {
+  ADMIN
+  EMPLOYEE
+}
+
+model Attendance {
+  id         Int       @id @default(autoincrement())
+  userId     Int
+  user       User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  work_date  String    // Format: YYYY-MM-DD
+  clock_in   DateTime  @default(now())
+  clock_out  DateTime?
+  punch_type String    @default("正常") // "正常" or "加班"
+
+  createdAt  DateTime  @default(now())
+  updatedAt  DateTime  @updatedAt
+}
+
+model Leave {
+  id         Int       @id @default(autoincrement())
+  userId     Int
+  user       User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  start_date DateTime
+  end_date   DateTime
+  reason     String
+  status     LeaveStatus @default(PENDING)
+
+  createdAt  DateTime  @default(now())
+  updatedAt  DateTime  @updatedAt
+}
+
+enum LeaveStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
+model Shift {
+  id         Int       @id @default(autoincrement())
+  userId     Int
+  user       User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  date       String    // YYYY-MM-DD
+  start_time String    // HH:mm
+  end_time   String    // HH:mm
+
+  createdAt  DateTime  @default(now())
+  updatedAt  DateTime  @updatedAt
+}

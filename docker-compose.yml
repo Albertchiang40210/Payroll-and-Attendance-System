@@ -1,35 +1,45 @@
 version: '3.8'
 
 services:
-  # 1. 員工打卡系統的 MySQL 資料庫 (Port: 3310)
+  # 1. 員工打卡系統的 MySQL 資料庫 (對外 Port: 3311)
   punch_db:
     image: mysql:8.0
     container_name: punch_mysql
     restart: "no"
     environment:
-      MYSQL_ROOT_PASSWORD: P@ssw0rd
-      MYSQL_DATABASE: punch_db                # 🟢 修正：完美對齊原始碼的 punch_db
+      TZ: ${SYSTEM_TZ}
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASS}
+      MYSQL_DATABASE: ${MYSQL_DB_NAME}
     ports:
-      - "3310:3306"
+      - "${DB_PORT_EXTERNAL}:3306" # 讀取 .env，完美對齊你的 "3311:3306"
     volumes:
       - punch_db_data:/var/lib/mysql
+    # 🎯 智慧型健康檢查：每 5 秒探測一次 MySQL 核心是否真正 Ready
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "root", "-p${MYSQL_ROOT_PASS}"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+      start_period: 15s
 
-  # 2. 打卡系統的 Node.js 服務 (Port: 8003)
+  # 2. 打卡系統的 Node.js 後端服務
   punch_backend:
-    image: node:18-slim
+    build: .                                  
     container_name: punch_web_service
     restart: "no"
-    working_dir: /app
-    volumes:
-      - .:/app
+    # 🚨 殺手級硬派修正：徹底不掛載本地 volumes，強迫讀取 Image 乾淨實體！
     ports:
-      - "8003:3001"                           # 完美對齊內部的 3001
+      - "${APP_PORT_EXTERNAL}:3001"                           
     environment:
-      - DB_HOST=punch_db                      # 傳遞正確的容器鄰居主機名稱
-      - DB_NAME=punch_db                      # 傳遞正確的資料庫名稱
-    command: sh -c "npm install && node server.js"
+      TZ: ${SYSTEM_TZ}
+      DB_HOST: punch_db                      
+      DB_NAME: ${MYSQL_DB_NAME}
+      DB_USER: root
+      DB_PASSWORD: ${MYSQL_ROOT_PASS}
+    # 🔗 嚴格依賴鏈：確保 punch_db 的 healthcheck 狀態為 healthy，後端才會正式啟動
     depends_on:
-      - punch_db
+      punch_db:
+        condition: service_healthy
 
 volumes:
   punch_db_data:

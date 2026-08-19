@@ -55,6 +55,12 @@
         
         .section-title { font-size: 15px; color: #666; font-weight: bold; margin-top: 15px; margin-bottom: 8px; border-left: 4px solid #ff9800; padding-left: 8px; }
         #boss-section { display: none; } 
+
+        .admin-login-box { display: none; margin-top: 20px; background-color: #eceff1; padding: 20px; border-radius: 8px; border: 1px solid #cfd8dc; box-shadow: inset 0 2px 4px rgba(0,0,0,0.02); animation: fadeIn 0.3s ease-in-out; }
+        .login-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-bottom: 15px; }
+        @media(max-width: 500px) { .login-grid { grid-template-columns: 1fr; } }
+        .btn-login-submit { background-color: #37474f; color: white; border: none; font-weight: bold; cursor: pointer; }
+        .btn-login-submit:hover { background-color: #212121; }
     </style>
 </head>
 <body>
@@ -89,8 +95,23 @@
         
         <div>
             <button class="public-query-btn" onclick="togglePublicQuery()">🔍 員工查詢當日紀錄</button>
-            <button class="admin-lock-btn" onclick="unlockAdmin()">🔐 管理者後台登入</button>
+            <button class="admin-lock-btn" onclick="toggleLoginBox()">🔐 管理者後台登入</button>
             <div class="clear-float"></div>
+        </div>
+
+        <div id="admin-login-area" class="admin-login-box">
+            <h3 style="margin-top:0; color:#37474f; text-align:center;">🔑 管理者身份驗證</h3>
+            <div class="login-grid">
+                <div>
+                    <label for="admin-username">管理者帳號：</label>
+                    <input type="text" id="admin-username" placeholder="例如: admin" style="padding:10px;">
+                </div>
+                <div>
+                    <label for="admin-password">管理者密碼：</label>
+                    <input type="password" id="admin-password" placeholder="請輸入密碼" style="padding:10px;">
+                </div>
+            </div>
+            <button class="btn-login-submit" onclick="executeAdminLogin()">確認驗證並登入後台</button>
         </div>
 
         <div id="public-query-board" style="display:none; margin-top:20px; background:#e0f7fa; padding:15px; border-radius:8px;">
@@ -117,7 +138,7 @@
         <div class="card" style="border: 1px solid #a5d6a7;">
             <h2 class="boss-title" style="color:#2e7d32; border-bottom:2px solid #e8f5e9;">📅 歷史全月歷史出勤流水帳</h2>
             <label for="month-input">請選擇查詢月份：</label>
-            <input type="month" id="month-input" value="2026-05" style="width:auto; display:inline-block; margin-right:15px;">
+            <input type="month" id="month-input" value="2026-06" style="width:auto; display:inline-block; margin-right:15px;">
             <button class="salary-btn" onclick="calculateSalary()" style="width:auto; display:inline-block; padding:10px 20px;">載入該月份出勤與薪資</button>
             
             <div id="history-attendance-area" style="display:none; margin-top:15px;">
@@ -196,8 +217,9 @@
                 } else {
                     data.forEach(item => {
                         const tr = document.createElement('tr');
+                        const typeTag = item.punch_type === '加班' ? ' <span style="color:#e67e22; font-size:11px;">[加班]</span>' : '';
                         tr.innerHTML = `
-                            <td><b>${item.name}</b></td>
+                            <td><b>${item.name}${typeTag}</b></td>
                             <td style="color:#2e7d32; font-weight:bold;">${item.log_in}</td>
                             <td style="color:#c62828; font-weight:bold;">${item.log_out || '<span style="color:#9e9e9e; font-weight:normal; font-style:italic;">仍在上班中</span>'}</td>
                         `;
@@ -210,16 +232,30 @@
         }
     }
 
-    function unlockAdmin() {
-        const password = prompt("🔑 請輸入管理者密碼：");
-        const correctPassword = "0912509135"; 
-        if (password === correctPassword) {
+    function toggleLoginBox() {
+        const box = document.getElementById('admin-login-area');
+        box.style.display = box.style.display === 'block' ? 'none' : 'block';
+        if (box.style.display === 'block') box.scrollIntoView({ behavior: 'smooth' });
+    }
+
+    function executeAdminLogin() {
+        const userField = document.getElementById('admin-username').value;
+        const passField = document.getElementById('admin-password').value;
+
+        if (userField === "admin" && passField === "admin123") {
             document.getElementById('boss-section').style.display = 'block';
             document.getElementById('today-date-str').textContent = `📅 報表日期：${getTWDateString()}`;
-            alert("🔓 密碼正確！已進入小籠包店管理後台。");
+            alert("🔓 雙重密鑰驗證成功！歡迎大老闆進入中央廚房管理系統。");
             loadTodayAttendance(); 
+            
+            document.getElementById('admin-username').value = '';
+            document.getElementById('admin-password').value = '';
+            document.getElementById('admin-login-area').style.display = 'none';
+            
             document.getElementById('boss-section').scrollIntoView({ behavior: 'smooth' });
-        } else if (password !== null) { alert("❌ 密碼錯誤！"); }
+        } else {
+            alert("❌ 錯誤：管理者帳號或密碼不匹配，拒絕訪問！");
+        }
     }
 
     async function loadTodayAttendance() {
@@ -233,7 +269,8 @@
             } else {
                 data.forEach(item => {
                     const tr = document.createElement('tr');
-                    tr.innerHTML = `<td><b>${item.name}</b></td><td style="color:#2e7d32; font-weight:bold;">${item.log_in}</td><td style="color:#c62828; font-weight:bold;">${item.log_out || '<span style="color:#9e9e9e; font-style:italic;">仍在上班...</span>'}</td>`;
+                    const showType = item.punch_type === '加班' ? ' <span style="color:#e67e22;">(加班)</span>' : '';
+                    tr.innerHTML = `<td><b>${item.name}${showType}</b></td><td style="color:#2e7d32; font-weight:bold;">${item.log_in}</td><td style="color:#c62828; font-weight:bold;">${item.log_out || '<span style="color:#9e9e9e; font-style:italic;">仍在上班...</span>'}</td>`;
                     tbody.appendChild(tr);
                 });
             }
@@ -266,7 +303,7 @@
         } catch (err) { console.error(err); }
     }
 
-    // ⭐ 核心改造：submitClock 函式現在支援傳入打卡類型 (正常 / 加班)
+    // 🎯 【前端同步通電】確實把班次類型 punch_type 傳給後端
     async function submitClock(type, punchType) {
         const select = document.getElementById('employee-select');
         const emp_id = select.value;
@@ -275,13 +312,13 @@
         if (!emp_id) return alert('【系統提示】請先選取您的名字再進行打卡！');
 
         try {
-            // 連同 punch_type 一起用 JSON 格式打給後端 server.js
             const res = await fetch('/api/clock', {
                 method: 'POST', 
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ emp_id, type, punch_type: punchType })
+                body: JSON.stringify({ emp_id, type, punch_type: punchType }) // 👈 精準封裝 punch_type
             });
             const data = await res.json();
+            
             if (res.status === 200) {
                 board.style.backgroundColor = type === 'in' ? '#e8f5e9' : '#ffebee';
                 board.style.color = type === 'in' ? '#2e7d32' : '#c62828';
@@ -295,8 +332,12 @@
                     togglePublicQuery(); 
                 }
                 if(document.getElementById('boss-section').style.display === 'block') loadTodayAttendance();
-            } else { alert(data.message); }
-        } catch (err) { alert('打卡連線失敗！'); }
+            } else { 
+                alert(data.message || data.error || '打卡失敗，請檢查後端日誌！'); 
+            }
+        } catch (err) { 
+            alert('打卡連線失敗，請確認 Docker 服務是否正常開機！'); 
+        }
     }
 
     async function calculateSalary() {
@@ -336,7 +377,6 @@
         }
         records.forEach(item => {
             const tr = document.createElement('tr');
-            // 明細表格也可以看到此筆打卡是正常班還是加班紀錄
             const showType = item.punch_type ? ` (${item.punch_type})` : '';
             tr.innerHTML = `<td>${item.work_date.slice(5, 10)}</td><td><b>${item.name}</b></td><td style="color:#2e7d32;">${item.log_in}${showType}</td><td style="color:#c62828;">${item.log_out || '<span style="color:#9e9e9e; font-style:italic;">未下班</span>'}</td><td>${item.day_hours !== null ? item.day_hours + ' 小時' : '缺失下班卡'}</td>`;
             detailTbody.appendChild(tr);

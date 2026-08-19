@@ -1,59 +1,73 @@
 # 🏪 點心專賣店員工出勤與薪資自動化結算系統 (Dimsum Shop HR & Payroll System)
 
-本專案是一套專為餐飲零售（點心專賣店）設計的數位化人力資源管理系統。核心目標是透過 **Node.js 後端架構** 整合 **MySQL 關聯式資料庫**，自動化處理傳統店家最繁瑣的「每日排班出勤」與「月終薪資結算」商業痛點。
+本專案是一套專為餐飲零售（點心專賣店）設計的數位化人力資源管理系統。經過全面重構與升級，系統現已採用業界標準的 **MVC 架構**，並導入 **Prisma ORM**、**JWT 身分驗證**與 **Zod 嚴格資料驗證**，提供更安全、更易擴充的企業級解決方案。
 
 ---
 
 ## 🛠️ 核心系統功能 (Core Features)
 
-### 1. 智慧型數位打卡機制 (Smart Clocking System)
-* **防重複打卡防呆**：後端自動檢驗當日日期（`work_date`），阻斷重複上班卡與重複下班卡，確保原始考勤數據的唯一性與正確性。
-* **打卡順序校驗**：嚴格限制員工必須有「上班打卡紀錄」始可觸發下班卡更新，防止邏輯漏洞。
-* **即時出勤流水帳**：提供當日出勤動態牆（Dashboard），即時顯示最新打卡員工名單與時間。
+### 1. 🔒 企業級權限控管 (Role-Based Access Control)
+* **JWT 身分驗證**：所有 API 皆受 JWT 保護，徹底解決傳統系統「員工互相代打卡」的作弊漏洞。
+* **角色分離**：系統分為 `ADMIN` (老闆) 與 `EMPLOYEE` (員工)。僅有老闆能新增員工、查閱薪資報表與審核請假。
 
-### 2. 考勤與薪資自動化計算引擎 (Automated Payroll Engine)
-* **精準工時計算**：利用 MySQL 的 `TIMESTAMPDIFF` 函數，自動精算員工每次出勤的「分鐘數」，並高精度轉換為小時單位（保留至小數點後兩位）。
-* **月終報表一鍵生成**：結合 `SUM` 聚合函數與 `JOIN` 關聯式查詢，輸入月份即可秒級產出：
-  * 當月所有員工的**總計工時**。
-  * 乘上個別時薪（`hourly_rate`）後的**應發總薪資統計表**。
-  * 依日期倒序的個別員工詳細出勤日誌。
+### 2. 智慧型數位打卡與薪資引擎
+* **防重複打卡防呆**：後端嚴格校驗，防範不合理的打卡行為。
+* **勞基法加班費自動試算**：薪資結算時，自動判斷單日工時。前 8 小時為正常時薪，第 8~10 小時以 **1.34倍** 計算，超過 10 小時以 **1.67倍** 計算，符合台灣現行法規。
 
-### 3. 全功能人事管理模組 (Complete Employee CRUD)
-* 具備完整的人事行政控管 API，支援新進員工錄取、基本時薪調整、以及離職員工資料維護。
+### 3. 排班與請假管理模組 (Shift & Leave Management)
+* **請假系統**：支援員工送出請假單，並由老闆在後台進行審核 (`APPROVED` / `REJECTED`)。
+* **排班系統**：提供老闆預先安排員工出勤班表的功能，便於店面人力調度。
 
 ---
 
 ## 💻 技術棧 (Tech Stack)
 
-* **後端核心：** Node.js / Express 框架 (RESTful API 設計、異步錯誤處理)
-* **資料庫管理：** MySQL (使用 `mysql2/promise` 實作高併發連接池 `Connection Pool` 存取優化)
-* **時區校正處理：** 原生 JavaScript Date 物件校正，精準鎖定台灣標準時區 (UTC+8) 的日期與時間戳記。
-* **資料庫關聯設計：**
-  * `employees` (員工基本資料表)
-  * `attendance` (出勤紀錄表，與員工表透過 `emp_id` 建立一對多關聯)
+* **後端核心**：Node.js / Express (MVC 架構)
+* **資料庫 ORM**：[Prisma](https://www.prisma.io/) (支援型別安全與自動化遷移)
+* **關聯式資料庫**：MySQL 8.0
+* **資安防護**：`jsonwebtoken` (JWT), `bcrypt` (密碼雜湊), `helmet`, `cors`
+* **資料驗證**：`Zod`
+* **時間處理**：`Day.js` (鎖定 `Asia/Taipei` 時區)
+* **自動化測試**：`Jest`, `Supertest`
+
+---
+
+## 🚀 快速啟動 (Quick Start)
+
+### 1. 啟動資料庫 (使用 Docker)
+請確保您的機器已安裝 Docker，並執行以下指令啟動 MySQL：
+```bash
+docker-compose up -d punch_db
+```
+
+### 2. 安裝依賴與初始化
+```bash
+npm install
+# 推送資料庫結構並產生 Prisma Client
+npx prisma db push
+# 建立預設的管理員帳號 (admin / admin123)
+node prisma/seed.js
+```
+
+### 3. 啟動伺服器
+```bash
+npm start
+```
+伺服器將會運行在 `http://localhost:3001`。
 
 ---
 
 ## 📡 RESTful API 規格說明 (API Endpoints)
 
-| 請求方法 | 路由 (Route) | 功能說明 | 核心實作技術 |
-| :--- | :--- | :--- | :--- |
-| **GET** | `/api/employees` | 取得所有員工名單與時薪 | 連接池 (Pool) 異步查詢 |
-| **POST** | `/api/clock` | 員工上班/下班打卡 | `INSERT/UPDATE` 與防呆狀態校驗 |
-| **GET** | `/api/attendance/today` | 取得今日即時出勤流水帳 | `JOIN` 查詢與 `DATE_FORMAT` 時間美化 |
-| **GET** | `/api/salary?month=YYYY-MM` | 查詢特定月份薪資總計與出勤明細 | `TIMESTAMPDIFF` 跨表聚合運算 |
-| **POST** | `/api/employees` | 新增員工基本資料 | 參數化查詢 (防止 SQL 注入) |
-| **PUT** | `/api/employees/:id` | 修改指定員工時薪與資料 | 動態路由與資料持久化更新 |
-| **DELETE**| `/api/employees/:id` | 刪除指定員工資料 | 關聯式刪除處理 |
+您可以透過瀏覽器訪問 `http://localhost:3001/api-docs` 查看完整的 Swagger 互動式 API 文件。介面右上角提供 **Authorize (鎖頭)** 功能，輸入 `Bearer <Your_JWT_Token>` 即可測試受保護的端點。
 
----
-
-## 🚀 未來擴充計畫 (AI 視覺整合接口預留)
-
-本系統的打卡 API (`/api/clock`) 在設計上採取高內聚低耦合的架構，已預留標準的 JSON 接收接口。未來計畫整合 **YOLOv8 / YOLO26** 電腦視覺模型，透過店面攝影機進行**人臉辨識自動出勤打卡**，或在結帳櫃檯進行**AI商品防盜盤點**，實現完全無感的智慧店面管理。
-
----
-
-## ⚠️ 安全與隱私說明 (Disclaimer)
-* 本公開倉庫已**完整抽離所有真實生產環境之資料庫密碼與敏感個資**。
-* 程式碼中連接池設定均已替換為本地端測試範例。
+| 分類 | 方法 | 路由 | 功能說明 | 權限需求 |
+| :--- | :--- | :--- | :--- | :--- |
+| **驗證** | POST | `/api/auth/login` | 使用者登入取得 Token | 無 |
+| **打卡** | POST | `/api/clock` | 上班/下班打卡 | 所有登入者 |
+| **打卡** | GET | `/api/attendance/today` | 取得今日出勤流水帳 | ADMIN |
+| **薪資** | GET | `/api/salary?month=...` | 月終薪資與加班費結算 | ADMIN |
+| **員工** | POST | `/api/employees` | 新增員工資料 | ADMIN |
+| **請假** | POST | `/api/leaves` | 送出請假申請 | 所有登入者 |
+| **請假** | PUT | `/api/leaves/:id/status`| 審核請假狀態 | ADMIN |
+| **排班** | POST | `/api/shifts` | 新增排班紀錄 | ADMIN |
