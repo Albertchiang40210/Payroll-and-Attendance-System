@@ -2,6 +2,13 @@ const { PrismaClient } = require('@prisma/client');
 const prisma = new PrismaClient();
 const catchAsync = require('../utils/catchAsync');
 const dayjs = require('dayjs');
+const utc = require('dayjs/plugin/utc');
+const timezone = require('dayjs/plugin/timezone');
+
+dayjs.extend(utc);
+dayjs.extend(timezone);
+
+const TZ = 'Asia/Taipei';
 
 exports.getSalaryReport = catchAsync(async (req, res) => {
     const { month } = req.query; 
@@ -37,8 +44,8 @@ exports.getSalaryReport = catchAsync(async (req, res) => {
     attendances.forEach(a => {
         const userId = a.userId;
         const user = a.user;
-        const clockIn = dayjs(a.clock_in);
-        const clockOut = dayjs(a.clock_out);
+        const clockIn = dayjs(a.clock_in).tz(TZ);
+        const clockOut = dayjs(a.clock_out).tz(TZ);
         const diffMinutes = clockOut.diff(clockIn, 'minute');
         const dayHours = diffMinutes / 60;
         

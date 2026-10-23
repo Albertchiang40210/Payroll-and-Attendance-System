@@ -1,5 +1,3 @@
-version: '3.8'
-
 services:
   # 1. 員工打卡系統的 MySQL 資料庫 (對外 Port: 3311)
   punch_db:
@@ -24,18 +22,16 @@ services:
 
   # 2. 打卡系統的 Node.js 後端服務
   punch_backend:
-    build: .                                  
+    build: .
     container_name: punch_web_service
     restart: "no"
-    # 🚨 殺手級硬派修正：徹底不掛載本地 volumes，強迫讀取 Image 乾淨實體！
     ports:
-      - "${APP_PORT_EXTERNAL}:3001"                           
+      - "${APP_PORT_EXTERNAL}:3001"
     environment:
       TZ: ${SYSTEM_TZ}
-      DB_HOST: punch_db                      
-      DB_NAME: ${MYSQL_DB_NAME}
-      DB_USER: root
-      DB_PASSWORD: ${MYSQL_ROOT_PASS}
+      NODE_ENV: production
+      DATABASE_URL: mysql://root:${MYSQL_ROOT_PASS}@punch_db:3306/${MYSQL_DB_NAME}
+      JWT_SECRET: ${JWT_SECRET}
     # 🔗 嚴格依賴鏈：確保 punch_db 的 healthcheck 狀態為 healthy，後端才會正式啟動
     depends_on:
       punch_db:

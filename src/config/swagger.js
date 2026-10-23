@@ -8,9 +8,9 @@ const swaggerOptions = {
     definition: {
         openapi: '3.0.0',
         info: {
-            title: '🏮 點心店員工打卡及薪資系統 API',
+            title: '點心店員工出勤與薪資系統 API',
             version: '1.0.0',
-            description: '資展全班第一名！大老闆專屬高效能中央廚房（支援正常與加班班次區隔）。',
+            description: '員工打卡、排班、請假與勞基法加班費薪資結算 API（JWT 驗證 + 角色權限）。',
         },
         servers: [
             {
@@ -46,8 +46,10 @@ const swaggerOptions = {
                             'application/json': {
                                 schema: {
                                     type: 'object',
-                                    required: ['name', 'hourly_rate'],
+                                    required: ['username', 'password', 'name', 'hourly_rate'],
                                     properties: {
+                                        username: { type: 'string', example: 'jay' },
+                                        password: { type: 'string', example: 'secret123' },
                                         name: { type: 'string', example: '周杰倫' },
                                         hourly_rate: { type: 'integer', example: 185 }
                                     }

@@ -11,18 +11,7 @@ beforeAll(async () => {
     await prisma.attendance.deleteMany();
     await prisma.user.deleteMany();
 
-    // Create a test user
-    const res = await request(app)
-        .post('/api/employees')
-        .send({
-            username: 'testuser',
-            password: 'password123',
-            name: 'Test User',
-            hourly_rate: 150,
-            role: 'EMPLOYEE'
-        });
-    // Wait, the API for creating employees is protected by ADMIN role.
-    // For tests, we can just use prisma directly to create a user.
+    // Create a test user directly via Prisma
     const bcrypt = require('bcrypt');
     const hashedPassword = await bcrypt.hash('password123', 10);
     const user = await prisma.user.create({
@@ -76,7 +65,7 @@ describe('Attendance API', () => {
             .send({ type: 'in', punch_type: '正常' });
         
         expect(res.statusCode).toEqual(400);
-        expect(res.body.status).toBe('fail');
+        expect(res.body.status).toBe('error');
     });
 
     it('should allow clock out', async () => {

@@ -34,7 +34,7 @@ app.use('/api/leaves', leaveRoutes);
 app.use('/api/shifts', shiftRoutes);
 
 // 404 Handler
-app.all('*', (req, res, next) => {
+app.use((req, res, next) => {
     const error = new Error(`Can't find ${req.originalUrl} on this server!`);
     error.statusCode = 404;
     next(error);

@@ -1,5 +1,5 @@
 # 使用輕量版 Node 基礎鏡像
-FROM node:18-slim
+FROM node:20-slim
 
 # 設定容器內的工作目錄
 WORKDIR /app
@@ -8,7 +8,8 @@ WORKDIR /app
 COPY package*.json ./
 
 # 在編譯階段就直接把所有套件安裝好！
-RUN npm install
+RUN apt-get update && apt-get install -y --no-install-recommends openssl && rm -rf /var/lib/apt/lists/*
+RUN npm ci
 
 # 複製其餘的所有原始碼檔案
 COPY . .
@@ -20,4 +21,5 @@ RUN npx prisma generate
 EXPOSE 3001
 
 # 容器啟動時的指令
-CMD ["npm", "start"]
+# 啟動前先同步資料表結構
+CMD ["sh", "-c", "npx prisma db push && npm start"]
