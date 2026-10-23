@@ -2,7 +2,7 @@
 
 餐飲零售業的員工打卡、排班、請假與薪資結算後端系統（含簡易前端），薪資依**台灣勞基法加班費率**自動計算。
 
-![CI](https://github.com/<your-account>/punch-system/actions/workflows/main.yml/badge.svg)
+![CI](https://github.com/Albertchiang40210/Payroll-and-Attendance-System/actions/workflows/main.yml/badge.svg)
 
 ## ✨ 功能
 
