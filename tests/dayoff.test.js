@@ -21,6 +21,7 @@ let veteranToken;
 
 async function cleanup() {
     await prisma.attendance.deleteMany();
+    await prisma.pairingCode.deleteMany();
     await prisma.setting.deleteMany();
     await prisma.user.deleteMany();
 }

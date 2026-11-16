@@ -1,3 +1,6 @@
+// 測試會連續登記許多次，調高登記限流（正式環境維持每 15 分鐘 10 次）
+process.env.PAIR_RATE_LIMIT_MAX = '1000';
+
 const request = require('supertest');
 const bcrypt = require('bcrypt');
 const app = require('../src/app');
@@ -15,6 +18,7 @@ const kioskClock = (body) =>
 
 async function cleanup() {
     await prisma.attendance.deleteMany();
+    await prisma.pairingCode.deleteMany();
     await prisma.setting.deleteMany();
     await prisma.user.deleteMany();
 }
@@ -39,36 +43,89 @@ afterAll(async () => {
     await prisma.$disconnect();
 });
 
-describe('Kiosk pairing', () => {
-    it('refuses to pair before a QR code has been generated', async () => {
-        const res = await request(app).post('/api/kiosk/pair').send({ code: 'ANYTHING' });
-        expect(res.statusCode).toEqual(403);
-    });
+const createQr = (body = {}) =>
+    request(app).post('/api/kiosk/qr').set('Authorization', `Bearer ${adminToken}`).send(body);
+const pair = (c) => request(app).post('/api/kiosk/pair').send({ code: c });
 
-    it('only admins can generate the QR code', async () => {
-        const res = await request(app).post('/api/kiosk/qr/regenerate');
+describe('Kiosk pairing', () => {
+    it('refuses to pair when no QR code has been generated', async () => {
+        const res = await pair('ANYTHING');
         expect(res.statusCode).toEqual(401);
     });
 
-    it('generates a QR code for admins', async () => {
-        const res = await request(app).post('/api/kiosk/qr/regenerate').set('Authorization', `Bearer ${adminToken}`);
+    it('only admins can generate the QR code', async () => {
+        const res = await request(app).post('/api/kiosk/qr').send({});
+        expect(res.statusCode).toEqual(401);
+    });
+
+    it('generates a short-lived QR code for admins', async () => {
+        const res = await createQr();
         expect(res.statusCode).toEqual(200);
         expect(res.body.set).toBe(true);
         expect(res.body.qr_data_url).toMatch(/^data:image\/svg\+xml;base64,/);
         expect(res.body.url).toMatch(/\/#c=[A-Z2-9]{10}$/);
+        expect(res.body.max_uses).toBe(3);
+        expect(res.body.uses).toBe(0);
+
+        const minutesLeft = (new Date(res.body.expires_at) - Date.now()) / 60000;
+        expect(minutesLeft).toBeGreaterThan(9);
+        expect(minutesLeft).toBeLessThanOrEqual(10);
         code = res.body.code;
     });
 
     it('rejects a wrong code', async () => {
-        const res = await request(app).post('/api/kiosk/pair').send({ code: 'WRONGCODE1' });
+        const res = await pair('WRONGCODE1');
         expect(res.statusCode).toEqual(401);
     });
 
-    it('pairs a phone with the right code (case-insensitive)', async () => {
-        const res = await request(app).post('/api/kiosk/pair').send({ code: code.toLowerCase() });
+    it('pairs a phone with the right code (case-insensitive) and counts the use', async () => {
+        const res = await pair(code.toLowerCase());
         expect(res.statusCode).toEqual(200);
         expect(res.body.token).toBeTruthy();
         kioskToken = res.body.token;
+
+        const status = await request(app).get('/api/kiosk/qr').set('Authorization', `Bearer ${adminToken}`);
+        expect(status.body.uses).toBe(1);
+    });
+});
+
+describe('Pairing code limits', () => {
+    it('stops working after the maximum number of phones', async () => {
+        const created = await createQr({ max_uses: 1 });
+        expect((await pair(created.body.code)).statusCode).toEqual(200);
+        expect((await pair(created.body.code)).statusCode).toEqual(401);
+    });
+
+    it('never lets more phones in than the limit, even when scanned at the same time', async () => {
+        const created = await createQr({ max_uses: 2 });
+        const results = await Promise.all(Array.from({ length: 6 }, () => pair(created.body.code)));
+        expect(results.filter((r) => r.statusCode === 200)).toHaveLength(2);
+        expect(results.filter((r) => r.statusCode === 401)).toHaveLength(4);
+    });
+
+    it('stops working after it expires (a photo of the QR code becomes useless)', async () => {
+        const created = await createQr({ ttl_minutes: 5 });
+        await prisma.pairingCode.update({
+            where: { code: created.body.code },
+            data: { expiresAt: new Date(Date.now() - 1000) }
+        });
+        expect((await pair(created.body.code)).statusCode).toEqual(401);
+
+        const status = await request(app).get('/api/kiosk/qr').set('Authorization', `Bearer ${adminToken}`);
+        expect(status.body.set).toBe(false);
+    });
+
+    it('voids the previous code when a new one is generated', async () => {
+        const first = await createQr();
+        const second = await createQr();
+        expect((await pair(first.body.code)).statusCode).toEqual(401);
+        expect((await pair(second.body.code)).statusCode).toEqual(200);
+    });
+
+    it('does not log out phones that are already registered', async () => {
+        await createQr();
+        const res = await kioskGet('/api/kiosk/employees');
+        expect(res.statusCode).toEqual(200);
     });
 });
 
@@ -142,7 +199,7 @@ describe('Kiosk punching', () => {
     });
 });
 
-describe('Deactivated employees and QR rotation', () => {
+describe('Deactivated employees and revoking phones', () => {
     it('hides a deactivated employee and refuses to punch for them', async () => {
         await request(app)
             .put(`/api/employees/${employee.id}`)
@@ -156,11 +213,19 @@ describe('Deactivated employees and QR rotation', () => {
         expect(res.statusCode).toEqual(404);
     });
 
-    it('invalidates every paired phone when the QR code is regenerated', async () => {
-        const regen = await request(app).post('/api/kiosk/qr/regenerate').set('Authorization', `Bearer ${adminToken}`);
-        expect(regen.body.code).not.toEqual(code);
+    it('invalidates every registered phone when the admin revokes them all', async () => {
+        const before = await kioskGet('/api/kiosk/employees');
+        expect(before.statusCode).toEqual(200);
 
-        const res = await kioskGet('/api/kiosk/employees');
+        const revoke = await request(app).post('/api/kiosk/revoke-all').set('Authorization', `Bearer ${adminToken}`);
+        expect(revoke.statusCode).toEqual(200);
+
+        const after = await kioskGet('/api/kiosk/employees');
+        expect(after.statusCode).toEqual(401);
+    });
+
+    it('only admins can revoke all phones', async () => {
+        const res = await request(app).post('/api/kiosk/revoke-all');
         expect(res.statusCode).toEqual(401);
     });
 });

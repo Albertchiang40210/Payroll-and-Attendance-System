@@ -80,3 +80,13 @@ model Setting {
   key   String @id
   value String
 }
+
+// 員工手機登記用的一次性 QR Code：有時效、有次數上限，用完即失效
+model PairingCode {
+  id        Int      @id @default(autoincrement())
+  code      String   @unique
+  expiresAt DateTime
+  maxUses   Int
+  uses      Int      @default(0)
+  createdAt DateTime @default(now())
+}

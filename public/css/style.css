@@ -883,6 +883,36 @@ input[type="number"] {
     background: #fff;
 }
 
+.qr-state {
+    display: inline-block;
+    padding: 6px 16px;
+    margin-bottom: 12px;
+    border-radius: 999px;
+    font-weight: 700;
+    font-size: 16px;
+}
+.qr-state.ok {
+    background: var(--success-soft);
+    color: var(--success);
+}
+.qr-state.bad {
+    background: var(--danger-soft);
+    color: var(--danger);
+}
+
+.qr-countdown {
+    margin-top: 10px;
+    font-size: 24px;
+    font-weight: 800;
+    font-variant-numeric: tabular-nums;
+    color: var(--brand-dark);
+}
+
+.qr-box img.qr-dead {
+    opacity: 0.15;
+    filter: grayscale(1);
+}
+
 .qr-code-text {
     margin: 8px 0 4px;
     font-size: 20px;

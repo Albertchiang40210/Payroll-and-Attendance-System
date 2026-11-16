@@ -4,12 +4,12 @@ const router = express.Router();
 const kioskController = require('../controllers/kioskController');
 const { protect, restrictTo, kioskProtect } = require('../middlewares/authMiddleware');
 const validateRequest = require('../middlewares/validateRequest');
-const { pairSchema, recordsSchema, kioskClockSchema } = require('../validations/kioskValidation');
+const { pairSchema, recordsSchema, kioskClockSchema, createQrSchema } = require('../validations/kioskValidation');
 
 // 防止暴力猜通行碼
 const pairLimiter = rateLimit({
     windowMs: 15 * 60 * 1000,
-    max: 10,
+    max: Number(process.env.PAIR_RATE_LIMIT_MAX) || 10,
     message: { status: 'fail', message: '嘗試次數過多，請於 15 分鐘後再試。' }
 });
 
@@ -28,6 +28,7 @@ router.post('/clock', kioskProtect, clockLimiter, validateRequest(kioskClockSche
 
 // 老闆後台
 router.get('/qr', protect, restrictTo('ADMIN'), kioskController.getQr);
-router.post('/qr/regenerate', protect, restrictTo('ADMIN'), kioskController.regenerateQr);
+router.post('/qr', protect, restrictTo('ADMIN'), validateRequest(createQrSchema), kioskController.createQr);
+router.post('/revoke-all', protect, restrictTo('ADMIN'), kioskController.revokeAllDevices);
 
 module.exports = router;

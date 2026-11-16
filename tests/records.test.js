@@ -23,6 +23,7 @@ const asAdmin = (req) => req.set('Authorization', `Bearer ${adminToken}`);
 
 async function cleanup() {
     await prisma.attendance.deleteMany();
+    await prisma.pairingCode.deleteMany();
     await prisma.setting.deleteMany();
     await prisma.user.deleteMany();
 }

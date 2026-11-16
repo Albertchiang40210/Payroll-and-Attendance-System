@@ -7,7 +7,7 @@
 ## ✨ 功能
 
 - **JWT 登入 + 角色權限（RBAC）**：`ADMIN`（老闆）以帳密登入後台；`EMPLOYEE`（員工）不需帳密。
-- **員工選名字打卡**：老闆在後台產生「打卡 QR Code」，員工用手機掃描一次即完成裝置登記（取得僅能打卡的裝置 token），之後只要選自己的名字即可打卡，並可查看自己最近 14 天的打卡紀錄（不含薪資）。QR Code 重新產生後，舊 QR Code 與所有已登記手機立即失效。離職員工可「停用」（從名單移除但保留歷史紀錄）。
+- **員工選名字打卡**：老闆在後台產生「員工登記 QR Code」，員工用手機掃描一次即完成裝置登記（取得僅能打卡的裝置 token），之後只要選自己的名字即可打卡，並可查看自己最近 14 天的打卡紀錄（不含薪資）。**登記用的 QR Code 為一次性**：預設 10 分鐘內有效、最多 3 支手機使用，過期或用完即失效，因此被拍照也無法再使用；也可複製連結以 LINE 傳給員工。另可「讓所有已登記手機失效」（離職、手機遺失時）。離職員工可「停用」（從名單移除但保留歷史紀錄）。
 - **加班打卡**：需先完成當天「正常」班的上、下班打卡才能使用，後端強制檢查；下班打卡一律需先有同班別的上班打卡。
 - **休假**：整天沒有任何打卡紀錄的日子自動列為休假（只算到昨天、員工到職日之後、在職員工），顯示於員工紀錄、薪資核算與當日查詢。
 - **補打卡**（ADMIN）：老闆可替員工補登、修改、刪除出勤紀錄（不可補未來時間、下班需晚於上班），補登紀錄會標記「補登」並可附備註。
@@ -30,7 +30,7 @@
 | 日誌 | Winston（含每日輪替檔案） |
 | 測試 / CI | Jest + Supertest、GitHub Actions（含 MySQL service） |
 | 部署 | Docker / docker-compose |
-| 前端 | 原生 HTML/CSS/JS，淺色簡潔、手機優先（`public/`：打卡頁與老闆首頁 `index.html`、員工管理 `employees.html`、打卡 QR Code `qrcode.html`、補打卡 `attendance.html`、薪資核算 `boss.html`；店標放在 `public/img/logo.jpg`） |
+| 前端 | 原生 HTML/CSS/JS，淺色簡潔、手機優先（`public/`：打卡頁與老闆首頁 `index.html`、員工管理 `employees.html`、員工登記 `qrcode.html`、補打卡 `attendance.html`、薪資核算 `boss.html`；店標放在 `public/img/logo.jpg`） |
 
 ## 🚀 快速啟動
 
@@ -75,7 +75,7 @@ DATABASE_URL="mysql://root:<密碼>@localhost:3311/punch_test" JWT_SECRET=test n
 DATABASE_URL="mysql://root:<密碼>@localhost:3311/punch_test" JWT_SECRET=test npm test
 ```
 
-目前涵蓋打卡流程（未授權、上班、重複打卡、下班）、加班前置規則，以及店內裝置打卡（QR Code 登記、權限隔離、停用員工、QR 重新產生後舊手機失效）。測試已設定為依序執行（`--runInBand`）。
+目前涵蓋打卡流程（未授權、上班、重複打卡、下班）、加班前置規則，以及店內裝置打卡（一次性登記碼（時效、次數上限、同時搶名額）、權限隔離、停用員工、讓所有手機失效）。測試已設定為依序執行（`--runInBand`）。
 
 ## 📡 API
 
@@ -97,7 +97,8 @@ DATABASE_URL="mysql://root:<密碼>@localhost:3311/punch_test" JWT_SECRET=test n
 | 店內打卡 | POST | `/api/kiosk/pair` | 以 QR Code 通行碼換取裝置 token | 公開（限流） |
 | 店內打卡 | GET | `/api/kiosk/employees`、`/api/kiosk/records` | 在職員工名單 / 某員工最近紀錄 | 裝置 token |
 | 店內打卡 | POST | `/api/kiosk/clock` | 選名字打卡 | 裝置 token |
-| 店內打卡 | GET / POST | `/api/kiosk/qr`、`/api/kiosk/qr/regenerate` | 檢視 / 重新產生打卡 QR Code | ADMIN |
+| 店內打卡 | GET / POST | `/api/kiosk/qr` | 檢視目前有效的登記 QR Code / 產生新的（`ttl_minutes`、`max_uses`） | ADMIN |
+| 店內打卡 | POST | `/api/kiosk/revoke-all` | 讓所有已登記手機失效 | ADMIN |
 | 請假 | POST | `/api/leaves` | 送出申請 | 登入者 |
 | 請假 | GET | `/api/leaves` | 所有請假單 | ADMIN |
 | 請假 | PUT | `/api/leaves/:id/status` | 審核（`APPROVED` / `REJECTED`） | ADMIN |
