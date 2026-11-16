@@ -6,6 +6,9 @@
     <meta name="theme-color" content="#ffffff">
     <title>車庫小籠包 - 薪資核算</title>
     <link rel="stylesheet" href="/css/style.css">
+    <link rel="manifest" href="/manifest.webmanifest">
+    <link rel="icon" type="image/png" sizes="64x64" href="/img/favicon-64.png">
+    <link rel="apple-touch-icon" href="/img/apple-touch-icon.png">
 </head>
 <body>
     <header class="topbar">
@@ -54,6 +57,11 @@
                 </table>
             </div>
 
+            <div class="form-actions" style="margin-top:14px">
+                <button id="export-summary" type="button" class="btn btn-ghost">下載薪資彙總（Excel）</button>
+                <button id="export-details" type="button" class="btn btn-ghost">下載每日明細（Excel）</button>
+            </div>
+
             <details>
                 <summary>查看每日明細</summary>
                 <div class="table-wrap">
@@ -77,6 +85,7 @@
     </main>
 
     <script src="/js/common.js"></script>
+    <script src="/js/csv.js"></script>
     <script src="/js/boss.js"></script>
 </body>
 </html>

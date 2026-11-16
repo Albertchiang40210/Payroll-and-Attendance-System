@@ -48,7 +48,10 @@ function emptyRow(colSpan, text) {
 
 const money = (n) => `$${Number(n).toLocaleString('zh-TW')}`;
 
+let lastReport = null; // 目前顯示的月份資料，供匯出使用
+
 function render(month, summary, details) {
+    lastReport = { month, summary, details };
     resultTitle.textContent = `${month.replace('-', ' 年 ')} 月薪資`;
     salaryTbody.replaceChildren();
     salaryTfoot.replaceChildren();
@@ -138,3 +141,27 @@ document.getElementById('month-next').addEventListener('click', () => {
 calcBtn.addEventListener('click', calculate);
 monthInput.addEventListener('change', calculate);
 calculate();
+
+// ---------- 匯出 Excel（CSV） ----------
+document.getElementById('export-summary').addEventListener('click', () => {
+    if (!lastReport) return;
+    const { month, summary } = lastReport;
+    const total = summary.reduce((sum, s) => sum + s.total_salary, 0);
+    CSV.download(`薪資彙總_${month}.csv`, [
+        ['員工', '時薪', '總工時（小時）', '休假天數', '應發薪資'],
+        ...summary.map((s) => [s.name, s.hourly_rate, s.total_hours, s.day_off_count || 0, s.total_salary]),
+        ['合計', '', '', '', total]
+    ]);
+});
+
+document.getElementById('export-details').addEventListener('click', () => {
+    if (!lastReport) return;
+    const { month, details } = lastReport;
+    CSV.download(`每日明細_${month}.csv`, [
+        ['日期', '姓名', '類型', '上班', '下班', '工時（小時）', '金額', '補登'],
+        ...details.map((d) => [
+            d.work_date, d.name, d.punch_type, d.day_off ? '' : d.log_in, d.day_off ? '' : d.log_out,
+            d.day_hours, d.earned, d.manual ? '是' : ''
+        ])
+    ]);
+});
