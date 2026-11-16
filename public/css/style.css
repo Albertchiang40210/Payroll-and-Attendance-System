@@ -612,6 +612,11 @@ input[type="number"] {
     background: var(--primary-soft);
 }
 
+.pair-help {
+    margin-top: 14px;
+    line-height: 1.7;
+}
+
 .link-row {
     margin-top: 18px;
     text-align: center;

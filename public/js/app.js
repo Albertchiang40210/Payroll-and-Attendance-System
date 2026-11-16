@@ -277,7 +277,9 @@ async function showMyPunch(justPaired = false) {
         });
         panel.refresh();
         if (justPaired) {
-            setMessage(kioskMessage, `✔ 手機登記完成！${data.name}，之後直接打開這個網址就能打卡。`, 'success');
+            setMessage(kioskMessage, `✔ 手機登記完成！${data.name}，之後用「同一個瀏覽器」直接打開這個網址就能打卡（請不要用無痕模式），建議加入書籤或主畫面。`, 'success');
+            // 請瀏覽器盡量長期保存這個網站的資料（不支援時忽略）
+            if (navigator.storage && navigator.storage.persist) navigator.storage.persist().catch(() => {});
         }
     } catch (err) {
         setMessage(kioskMessage, '網路連線失敗，請稍後再試。', 'error');
@@ -486,14 +488,24 @@ if (/Line\/|FBAN|FBAV|Instagram|MicroMessenger/i.test(navigator.userAgent)) {
     document.getElementById('inapp-warning').hidden = false;
 }
 
-(function init() {
+(async function init() {
     const match = /(?:^|[#&])c=([^&]+)/.exec(location.hash);
-    if (match) {
-        const code = decodeURIComponent(match[1]);
-        history.replaceState(null, '', location.pathname);
-        showView('pair');
-        pairWith(code);
-    } else {
+    if (!match) {
         route();
+        return;
     }
+
+    const code = decodeURIComponent(match[1]);
+    history.replaceState(null, '', location.pathname);
+
+    // 這支手機如果已經登記過（例如又點了一次舊的登記連結），直接進打卡畫面，不要再拿用過的碼去登記
+    if (HR.getKioskToken()) {
+        const { res } = await HR.api('/kiosk/me', { kiosk: true });
+        if (res.ok) {
+            showMyPunch();
+            return;
+        }
+    }
+    showView('pair');
+    pairWith(code);
 })();
