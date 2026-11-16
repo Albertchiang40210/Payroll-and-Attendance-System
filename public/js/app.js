@@ -1,6 +1,5 @@
 const views = {
     pair: document.getElementById('pair-view'),
-    kiosk: document.getElementById('kiosk-view'),
     punch: document.getElementById('punch-view'),
     login: document.getElementById('login-view'),
     dashboard: document.getElementById('dashboard-view')

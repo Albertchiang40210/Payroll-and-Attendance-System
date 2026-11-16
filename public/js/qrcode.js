@@ -168,8 +168,11 @@ setInterval(render, 1000);
 async function refresh() {
     const { res, data } = await HR.api('/kiosk/qr');
     if (!res.ok) return;
+    const firstLoad = current === null;
     const wasUsed = current && current.set && current.uses >= current.max_uses;
     current = data;
+    // 剛打開頁面時就已經用過的 QR Code，不要再跳「已登記完成」的提示
+    if (firstLoad && current.set && current.uses >= current.max_uses) boundNotified = true;
     render();
     if (current.set && current.uses >= current.max_uses && !wasUsed && !boundNotified) {
         boundNotified = true;
