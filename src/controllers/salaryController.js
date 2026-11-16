@@ -90,7 +90,7 @@ exports.getSalaryReport = catchAsync(async (req, res) => {
             where: { work_date: { startsWith: month } },
             select: { userId: true, work_date: true }
         }),
-        prisma.user.findMany({ where: { role: 'EMPLOYEE', active: true } })
+        prisma.user.findMany({ where: { punch: true, active: true } })
     ]);
 
     const workedByUser = {};

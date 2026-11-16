@@ -66,10 +66,10 @@ exports.kioskProtect = catchAsync(async (req, res, next) => {
 
     const device = await prisma.device.findUnique({
         where: { id: decoded.did },
-        include: { user: { select: { id: true, name: true, role: true, active: true } } }
+        include: { user: { select: { id: true, name: true, punch: true, active: true } } }
     });
     if (!device) throw unauthorized('此手機的登記已被解除，請向店長重新索取登記 QR Code。');
-    if (device.user.role !== 'EMPLOYEE' || !device.user.active) {
+    if (!device.user.punch || !device.user.active) {
         throw unauthorized('這個帳號已停用，如有疑問請洽店長。');
     }
 

@@ -345,7 +345,7 @@ async function loadDashboard() {
         if (!att.res.ok || !Array.isArray(att.data) || !emp.res.ok || !Array.isArray(emp.data)) return;
 
         const rows = att.data;
-        const staff = emp.data.filter((u) => u.role === 'EMPLOYEE' && u.active);
+        const staff = emp.data.filter((u) => u.punch && u.active);
         const punchedIds = new Set(rows.map((r) => r.userId));
         const workingIds = new Set(rows.filter((r) => !r.log_out).map((r) => r.userId));
         const absent = staff.filter((u) => !punchedIds.has(u.id));
@@ -388,15 +388,13 @@ function shiftDate(ymd, days) {
 
 async function loadDay(date) {
     const today = todayYmd();
-    dayInput.max = today;
     dayInput.value = date;
-    dayNext.disabled = date >= today;
 
     const { res, data } = await HR.api(`/attendance/day?date=${encodeURIComponent(date)}`);
     if (!res.ok || !data) return;
 
-    dayTitle.textContent = data.is_today ? '今日出勤' : `${date} 出勤`;
-    renderAttendance(data.rows, data.is_today);
+    dayTitle.textContent = data.is_today ? '今日出勤' : data.is_future ? `${date}（還沒到）` : `${date} 出勤`;
+    renderAttendance(data.rows, data.is_today, data.is_future);
 
     if (data.absent.length > 0) {
         dayAbsent.textContent = `${data.is_today ? '今天尚未打卡' : '當天休假'}：${data.absent.join('、')}`;
@@ -413,11 +411,11 @@ dayPrev.addEventListener('click', () => loadDay(shiftDate(dayInput.value || toda
 dayNext.addEventListener('click', () => loadDay(shiftDate(dayInput.value || todayYmd(), 1)));
 document.getElementById('day-today').addEventListener('click', () => loadDay(todayYmd()));
 
-function renderAttendance(data, isToday) {
+function renderAttendance(data, isToday, isFuture) {
     attendanceTbody.replaceChildren();
     if (data.length === 0) {
         const tr = document.createElement('tr');
-        const td = makeCell(isToday ? '今天還沒有人打卡' : '這一天沒有人打卡', 'empty');
+        const td = makeCell(isToday ? '今天還沒有人打卡' : isFuture ? '這一天還沒到' : '這一天沒有人打卡', 'empty');
         td.colSpan = 4;
         tr.appendChild(td);
         attendanceTbody.appendChild(tr);

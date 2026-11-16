@@ -9,6 +9,7 @@ exports.createUserSchema = z.object({
     name: z.string().min(1, "姓名為必填"),
     hourly_rate: z.number().min(0, "時薪不能為負數"),
     role: z.enum(['ADMIN', 'EMPLOYEE']).optional(),
+    punch: z.boolean().optional(),
   }).superRefine((b, ctx) => {
     if (b.role === 'ADMIN') {
       if (!b.username) ctx.addIssue({ code: 'custom', path: ['username'], message: "管理員需要登入帳號" });
@@ -37,6 +38,7 @@ exports.updateUserSchema = z.object({
     name: z.string().min(1).optional(),
     hourly_rate: z.number().min(0).optional(),
     active: z.boolean().optional(),
+    punch: z.boolean().optional(),
   }),
 });
 

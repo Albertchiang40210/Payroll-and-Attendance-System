@@ -38,7 +38,7 @@ beforeAll(async () => {
     await cleanup();
     const hashed = await bcrypt.hash('adminpass1', 10);
     admin = await prisma.user.create({
-        data: { username: 'boss', password: hashed, name: 'Boss', role: 'ADMIN', hourly_rate: 0 }
+        data: { username: 'boss', password: hashed, name: 'Boss', role: 'ADMIN', hourly_rate: 0, punch: false }
     });
     wang = await prisma.user.create({
         data: { username: 'emp_a', password: hashed, name: '王小明', role: 'EMPLOYEE', hourly_rate: 190 }
@@ -323,6 +323,108 @@ describe('Punching only at the store', () => {
         expect(res.statusCode).toEqual(200);
         const me = await phoneGet(phone, '/api/kiosk/me');
         expect(me.body.location_required).toBe(false);
+    });
+});
+
+describe('Admins who also punch', () => {
+    let boss2;
+
+    beforeAll(async () => {
+        const hashed = await bcrypt.hash('adminpass1', 10);
+        boss2 = await prisma.user.create({
+            data: { username: 'boss2', password: hashed, name: '老闆本人', role: 'ADMIN', hourly_rate: 200, punch: true }
+        });
+    });
+
+    it('lets an admin who is marked as punching register a phone and punch', async () => {
+        const phone = await registerPhone(boss2.id);
+        expect(phone).toBeTruthy();
+        const res = await phoneClock(phone, { type: 'in' });
+        expect(res.statusCode).toEqual(200);
+        expect(res.body.message).toContain('老闆本人');
+    });
+
+    it('still refuses an admin account that is not marked as punching', async () => {
+        expect((await createQr(admin.id)).statusCode).toEqual(404);
+    });
+
+    it('stops that admin from punching once the setting is switched off', async () => {
+        const phone = await registerPhone(boss2.id);
+        await asAdmin(request(app).put(`/api/employees/${boss2.id}`)).send({ punch: false });
+        expect((await phoneGet(phone, '/api/kiosk/me')).statusCode).toEqual(401);
+        expect((await createQr(boss2.id)).statusCode).toEqual(404);
+        await asAdmin(request(app).put(`/api/employees/${boss2.id}`)).send({ punch: true });
+    });
+
+    it('lists the admin among the people who need a phone only when punching is on', async () => {
+        const res = await asAdmin(request(app).get('/api/kiosk/devices'));
+        expect(res.body.map((u) => u.name)).toContain('老闆本人');
+        expect(res.body.map((u) => u.name)).not.toContain('Boss');
+    });
+
+    it('creates employees as punching and admins as not punching by default', async () => {
+        const emp = await asAdmin(request(app).post('/api/employees')).send({ name: '新員工甲', hourly_rate: 190 });
+        expect(emp.body.data.punch).toBe(true);
+
+        const adm = await asAdmin(request(app).post('/api/employees')).send({
+            name: '新管理員', hourly_rate: 0, role: 'ADMIN', username: 'newadmin', password: 'secret12'
+        });
+        expect(adm.body.data.punch).toBe(false);
+
+        const adm2 = await asAdmin(request(app).post('/api/employees')).send({
+            name: '會打卡的管理員', hourly_rate: 0, role: 'ADMIN', username: 'newadmin2', password: 'secret12', punch: true
+        });
+        expect(adm2.body.data.punch).toBe(true);
+    });
+});
+
+describe('Deleting employees', () => {
+    const del = (id) => asAdmin(request(app).delete(`/api/employees/${id}`));
+    let victim;
+
+    beforeAll(async () => {
+        victim = await prisma.user.create({
+            data: { username: 'victim', password: 'x', name: '要刪除的人', role: 'EMPLOYEE', hourly_rate: 100 }
+        });
+        await prisma.attendance.create({
+            data: { userId: victim.id, work_date: '2026-11-10', clock_in: new Date(), clock_out: new Date() }
+        });
+    });
+
+    it('reports how many punch records an employee has, so the UI can warn first', async () => {
+        const res = await asAdmin(request(app).get('/api/employees'));
+        expect(res.body.find((u) => u.id === victim.id).attendance_count).toBe(1);
+    });
+
+    it('requires an admin', async () => {
+        expect((await request(app).delete(`/api/employees/${victim.id}`)).statusCode).toEqual(401);
+    });
+
+    it('refuses to delete the account you are logged in with', async () => {
+        const res = await del(admin.id);
+        expect(res.statusCode).toEqual(400);
+    });
+
+    it('deletes the employee together with their punch records and registered phone', async () => {
+        const phone = await registerPhone(victim.id);
+        expect((await phoneGet(phone, '/api/kiosk/me')).statusCode).toEqual(200);
+
+        const res = await del(victim.id);
+        expect(res.statusCode).toEqual(200);
+        expect(await prisma.attendance.count({ where: { userId: victim.id } })).toBe(0);
+        expect(await prisma.device.count({ where: { userId: victim.id } })).toBe(0);
+        expect((await phoneGet(phone, '/api/kiosk/me')).statusCode).toEqual(401);
+    });
+
+    it('returns 404 for someone who no longer exists', async () => {
+        expect((await del(victim.id)).statusCode).toEqual(404);
+    });
+
+    it('can delete another admin account', async () => {
+        const other = await prisma.user.create({
+            data: { username: 'otheradmin', password: 'x', name: '另一位管理員', role: 'ADMIN', hourly_rate: 0 }
+        });
+        expect((await del(other.id)).statusCode).toEqual(200);
     });
 });
 

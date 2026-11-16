@@ -819,6 +819,20 @@ input[type="number"] {
     margin-top: 2px;
 }
 
+.month-nav {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+.month-nav input[type="month"] {
+    flex: 1;
+    min-width: 0;
+}
+.month-nav .btn {
+    min-height: 48px;
+    padding: 6px 14px;
+}
+
 .date-nav {
     display: flex;
     align-items: center;
@@ -984,6 +998,28 @@ input[type="number"] {
     .now-time {
         font-size: 64px;
     }
+}
+
+/* ---------- 勾選項目 ---------- */
+.btn-danger-ghost {
+    color: var(--danger);
+    border-color: #e4b4b4;
+}
+.btn-danger-ghost:hover {
+    background: var(--danger-soft);
+}
+
+.check {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-weight: 600;
+    cursor: pointer;
+}
+.check input {
+    width: 22px;
+    height: 22px;
+    accent-color: var(--primary);
 }
 
 /* ---------- 員工手機狀態（老闆後台） ---------- */

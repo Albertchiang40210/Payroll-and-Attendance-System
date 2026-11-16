@@ -37,10 +37,9 @@ exports.getDayAttendance = catchAsync(async (req, res) => {
         error.statusCode = 400;
         throw error;
     }
+    // 還沒到的日期：沒有任何紀錄，也不能判定休假
     if (date > todayStr) {
-        const error = new Error('不能查詢未來的日期。');
-        error.statusCode = 400;
-        throw error;
+        return res.json({ date, is_today: false, is_future: true, rows: [], absent: [] });
     }
 
     const [records, staff] = await Promise.all([
@@ -50,7 +49,7 @@ exports.getDayAttendance = catchAsync(async (req, res) => {
             orderBy: { clock_in: 'asc' }
         }),
         prisma.user.findMany({
-            where: { role: 'EMPLOYEE', active: true },
+            where: { punch: true, active: true },
             select: { id: true, name: true, createdAt: true }
         })
     ]);

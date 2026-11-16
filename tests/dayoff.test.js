@@ -31,7 +31,7 @@ beforeAll(async () => {
     const hashed = await bcrypt.hash('password123', 10);
 
     await prisma.user.create({
-        data: { username: 'boss', password: hashed, name: 'Boss', role: 'ADMIN', hourly_rate: 0 }
+        data: { username: 'boss', password: hashed, name: 'Boss', role: 'ADMIN', hourly_rate: 0, punch: false }
     });
     veteran = await prisma.user.create({
         data: {
@@ -158,9 +158,10 @@ describe('Attendance lookup for a given day', () => {
         expect(todayRes.body.absent.sort()).toEqual(['新員工', '資深員工'].sort());
     });
 
-    it('refuses a future date', async () => {
-        const res = await day(today.add(1, 'day').format('YYYY-MM-DD'), adminToken);
-        expect(res.statusCode).toEqual(400);
+    it('answers a future date with an empty "not yet" result instead of an error', async () => {
+        const res = await day(today.add(400, 'day').format('YYYY-MM-DD'), adminToken);
+        expect(res.statusCode).toEqual(200);
+        expect(res.body).toMatchObject({ is_future: true, is_today: false, rows: [], absent: [] });
     });
 
     it('refuses a malformed date', async () => {

@@ -64,10 +64,10 @@ const verifyLocation = async (location) => {
     return distance;
 };
 
-// 只有「在職的一般員工」可以綁定手機、打卡；管理員帳號不行
+// 只有「在職且需要打卡」的人可以綁定手機、打卡（員工，以及選擇要打卡的管理員）
 const getActiveEmployee = async (userId) => {
     const user = await prisma.user.findFirst({
-        where: { id: userId, role: 'EMPLOYEE', active: true },
+        where: { id: userId, punch: true, active: true },
         select: { id: true, name: true }
     });
     if (!user) throw httpError(404, '找不到此員工，或已停用。');
@@ -182,7 +182,7 @@ exports.createQr = catchAsync(async (req, res) => {
 // 每位在職員工的手機登記狀態
 exports.listDevices = catchAsync(async (req, res) => {
     const users = await prisma.user.findMany({
-        where: { role: 'EMPLOYEE', active: true },
+        where: { punch: true, active: true },
         select: {
             id: true,
             name: true,

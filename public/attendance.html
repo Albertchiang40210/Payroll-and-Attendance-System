@@ -30,7 +30,11 @@
                 </div>
                 <div class="field">
                     <label for="month-input">月份</label>
-                    <input type="month" id="month-input">
+                    <div class="month-nav">
+                        <button id="month-prev" type="button" class="btn btn-ghost" aria-label="上個月">←</button>
+                        <input type="month" id="month-input">
+                        <button id="month-next" type="button" class="btn btn-ghost" aria-label="下個月">→</button>
+                    </div>
                 </div>
             </div>
         </section>

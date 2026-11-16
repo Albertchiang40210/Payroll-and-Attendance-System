@@ -26,6 +26,14 @@ const WEEKDAYS = ['日', '一', '二', '三', '四', '五', '六'];
 
 let editingId = null;
 
+
+// 月份加減（YYYY-MM），不受瀏覽器月份選單的年份範圍影響
+function shiftMonth(ym, delta) {
+    const [y, m] = ym.split('-').map(Number);
+    const d = new Date(Date.UTC(y, m - 1 + delta, 1));
+    return d.toISOString().slice(0, 7);
+}
+
 document.getElementById('logout-btn').addEventListener('click', () => {
     HR.clearSession();
     location.replace('/');
@@ -254,7 +262,7 @@ async function init() {
         return;
     }
 
-    const staff = data.filter((u) => u.role === 'EMPLOYEE');
+    const staff = data.filter((u) => u.punch);
     if (staff.length === 0) {
         showMessage('還沒有員工，請先到「員工管理」新增。', 'error');
         return;
@@ -262,7 +270,7 @@ async function init() {
     staff.forEach((u) => {
         const opt = document.createElement('option');
         opt.value = u.id;
-        opt.textContent = u.active ? u.name : `${u.name}（已停用）`;
+        opt.textContent = u.active ? u.name : `${u.name}（已離職）`;
         empSelect.appendChild(opt);
     });
     loadList();
@@ -273,5 +281,13 @@ empSelect.addEventListener('change', () => {
     loadList();
 });
 monthInput.addEventListener('change', loadList);
+document.getElementById('month-prev').addEventListener('click', () => {
+    monthInput.value = shiftMonth(monthInput.value || todayYmd.slice(0, 7), -1);
+    loadList();
+});
+document.getElementById('month-next').addEventListener('click', () => {
+    monthInput.value = shiftMonth(monthInput.value || todayYmd.slice(0, 7), 1);
+    loadList();
+});
 
 init();

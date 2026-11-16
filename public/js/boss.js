@@ -18,6 +18,14 @@ const detailTbody = document.getElementById('detail-tbody');
 // 預設為本月（台灣時間）
 monthInput.value = new Date().toLocaleDateString('en-CA', { timeZone: 'Asia/Taipei' }).slice(0, 7);
 
+
+// 月份加減（YYYY-MM），不受瀏覽器月份選單的年份範圍影響
+function shiftMonth(ym, delta) {
+    const [y, m] = ym.split('-').map(Number);
+    const d = new Date(Date.UTC(y, m - 1 + delta, 1));
+    return d.toISOString().slice(0, 7);
+}
+
 document.getElementById('logout-btn').addEventListener('click', () => {
     HR.clearSession();
     location.replace('/');
@@ -119,6 +127,14 @@ async function calculate() {
     }
 }
 
+document.getElementById('month-prev').addEventListener('click', () => {
+    monthInput.value = shiftMonth(monthInput.value || new Date().toISOString().slice(0, 7), -1);
+    calculate();
+});
+document.getElementById('month-next').addEventListener('click', () => {
+    monthInput.value = shiftMonth(monthInput.value || new Date().toISOString().slice(0, 7), 1);
+    calculate();
+});
 calcBtn.addEventListener('click', calculate);
 monthInput.addEventListener('change', calculate);
 calculate();

@@ -20,7 +20,7 @@ const httpError = (status, message) => {
 const fmt = (d, f) => dayjs(d).tz(TZ).format(f);
 
 const getEmployee = async (userId) => {
-    const user = await prisma.user.findFirst({ where: { id: userId, role: 'EMPLOYEE' } });
+    const user = await prisma.user.findFirst({ where: { id: userId, punch: true } });
     if (!user) throw httpError(404, '找不到此員工。');
     return user;
 };

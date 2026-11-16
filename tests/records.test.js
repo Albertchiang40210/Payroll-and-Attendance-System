@@ -32,7 +32,7 @@ beforeAll(async () => {
     await cleanup();
     const hashed = await bcrypt.hash('password123', 10);
     await prisma.user.create({
-        data: { username: 'boss', password: hashed, name: 'Boss', role: 'ADMIN', hourly_rate: 0 }
+        data: { username: 'boss', password: hashed, name: 'Boss', role: 'ADMIN', hourly_rate: 0, punch: false }
     });
     employee = await prisma.user.create({
         data: {

@@ -36,9 +36,13 @@
                 <div class="field">
                     <label for="add-role">身分</label>
                     <select id="add-role">
-                        <option value="EMPLOYEE">員工（選名字打卡）</option>
-                        <option value="ADMIN">管理員（可進後台）</option>
+                        <option value="EMPLOYEE">員工（用自己的手機打卡）</option>
+                        <option value="ADMIN">管理員（可進後台，可選擇也要打卡）</option>
                     </select>
+                    <span class="hint">一般員工請選「員工」。「管理員」可以登入後台，並可勾選是否也要打卡。</span>
+                </div>
+                <div class="field" id="admin-punch-field" hidden>
+                    <label class="check"><input type="checkbox" id="add-punch" checked> 這位管理員也要打卡（用自己的手機）</label>
                 </div>
                 <div class="field" id="admin-username-field" hidden>
                     <label for="add-username">後台登入帳號</label>
@@ -67,6 +71,9 @@
                     <label for="edit-rate">時薪（元）</label>
                     <input type="number" id="edit-rate" required min="0" step="1" inputmode="numeric">
                 </div>
+                <div class="field form-wide">
+                    <label class="check"><input type="checkbox" id="edit-punch"> 這個人需要打卡（會出現在手機登記、出勤與休假名單）</label>
+                </div>
                 <div class="form-actions">
                     <button id="edit-save" type="submit" class="btn btn-primary">儲存</button>
                     <button id="edit-cancel" type="button" class="btn btn-ghost">取消</button>
@@ -78,7 +85,7 @@
         <!-- 員工名單 -->
         <section class="card">
             <h2>員工名單</h2>
-            <p class="subtitle">離職的員工請按「停用」：他們會從打卡名單消失，但過去的打卡和薪資紀錄會保留。</p>
+            <p class="subtitle">員工離職請按「離職」：他會從打卡名單消失，但過去的打卡和薪資紀錄會保留（之後也能「復職」）。還沒有任何打卡紀錄的人（例如新增錯了），可以直接「刪除」。</p>
             <div class="table-wrap">
                 <table>
                     <thead>

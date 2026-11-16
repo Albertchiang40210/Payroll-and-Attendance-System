@@ -64,8 +64,12 @@ async function loadDevices() {
     // 狀態表
     deviceTbody.replaceChildren();
     if (data.length === 0) {
+        const placeholder = document.createElement('option');
+        placeholder.textContent = '（還沒有員工）';
+        empSelect.appendChild(placeholder);
+
         const tr = document.createElement('tr');
-        const td = cell('還沒有員工，請先到「員工管理」新增。', 'empty');
+        const td = cell('還沒有「員工」身分的人。請到「員工管理」新增，身分選「員工」；「管理員」不會列在這裡，也不能打卡。', 'empty');
         td.colSpan = 3;
         tr.appendChild(td);
         deviceTbody.appendChild(tr);
