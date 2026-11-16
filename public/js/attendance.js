@@ -152,6 +152,12 @@ async function loadList() {
                 noteTd.appendChild(m);
             }
             if (it.rec.note) noteTd.appendChild(document.createTextNode(` ${it.rec.note}`));
+            if (!it.rec.manual && it.rec.in_distance !== null && it.rec.in_distance !== undefined) {
+                const d = document.createElement('span');
+                d.className = 'dayoff-note';
+                d.textContent = ` 打卡時離店 ${it.rec.in_distance} 公尺`;
+                noteTd.appendChild(d);
+            }
             tr.appendChild(noteTd);
 
             const edit = document.createElement('button');

@@ -4,12 +4,12 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
     <meta name="theme-color" content="#ffffff">
-    <title>車庫小籠包 - 員工登記 QR Code</title>
+    <title>車庫小籠包 - 員工手機與打卡位置</title>
     <link rel="stylesheet" href="/css/style.css">
 </head>
 <body>
     <header class="topbar">
-        <div class="brand"><img class="brand-logo" data-logo src="/img/logo.jpg" alt="" width="32" height="32">員工登記</div>
+        <div class="brand"><img class="brand-logo" data-logo src="/img/logo.jpg" alt="" width="32" height="32">員工手機</div>
         <div class="topbar-user">
             <a class="btn btn-ghost" href="/">回首頁</a>
             <button id="logout-btn" class="btn btn-ghost" type="button">登出</button>
@@ -19,11 +19,16 @@
     <main class="container wide">
         <div id="message" class="result" role="status" aria-live="polite" hidden></div>
 
+        <!-- 1. 為員工產生專屬 QR Code -->
         <section class="card">
             <h2>登記員工的手機</h2>
-            <p class="subtitle">新員工第一次打卡時，要先登記手機。這裡產生的 QR Code <strong>只有一小段時間有效、用完就失效</strong>，所以就算被拍照也沒有用。每支手機只要登記一次。</p>
+            <p class="subtitle">選擇員工，產生他<strong>專屬</strong>的 QR Code，讓他用手機掃描。掃描後這支手機就<strong>只屬於這位員工</strong>，只能替他自己打卡。QR Code 只有短時間有效、只能用一次，拍照也沒有用。</p>
 
             <div class="toolbar">
+                <div class="field">
+                    <label for="emp-select">員工</label>
+                    <select id="emp-select"></select>
+                </div>
                 <div class="field">
                     <label for="ttl-select">有效時間</label>
                     <select id="ttl-select">
@@ -32,41 +37,70 @@
                         <option value="30">30 分鐘（用 LINE 傳連結時）</option>
                     </select>
                 </div>
-                <div class="field">
-                    <label for="uses-select">可登記幾支手機</label>
-                    <select id="uses-select">
-                        <option value="1">1 支</option>
-                        <option value="3" selected>3 支</option>
-                        <option value="5">5 支</option>
-                        <option value="10">10 支</option>
-                    </select>
-                </div>
                 <button id="qr-create" type="button" class="btn btn-primary">產生 QR Code</button>
             </div>
         </section>
 
         <section id="qr-card" class="card" hidden>
             <div class="qr-box">
+                <div id="qr-for" class="qr-for"></div>
                 <div id="qr-state" class="qr-state"></div>
-                <img id="qr-img" alt="員工登記 QR Code">
+                <img id="qr-img" alt="員工專屬登記 QR Code">
                 <div id="qr-countdown" class="qr-countdown"></div>
-                <div id="qr-uses" class="qr-note"></div>
 
                 <div class="qr-note">掃不到時，可在打卡頁手動輸入通行碼：</div>
                 <div id="qr-code" class="qr-code-text"></div>
 
                 <div class="form-actions" style="justify-content:center">
-                    <button id="qr-share" type="button" class="btn btn-primary" hidden>用 LINE 傳給員工</button>
+                    <button id="qr-share" type="button" class="btn btn-primary" hidden>用 LINE 傳給他</button>
                     <button id="qr-copy" type="button" class="btn btn-ghost">複製連結</button>
                 </div>
-                <p class="hint">連結和 QR Code 的效果一樣，點了就能登記手機。時間到或名額用完就會失效。</p>
+                <p class="hint">連結和 QR Code 效果一樣，只能傳給<strong>本人</strong>。時間到或已使用就會失效。</p>
             </div>
         </section>
 
+        <!-- 2. 手機登記狀態 -->
         <section class="card">
-            <h2>已登記的手機</h2>
-            <p class="subtitle">員工離職、或手機遺失時，按下面的按鈕讓<strong>所有</strong>已登記的手機失效。留下來的員工需要再登記一次（重新產生 QR Code 掃描即可）。</p>
-            <button id="revoke-all" type="button" class="btn btn-ghost">讓所有已登記的手機失效</button>
+            <h2>員工手機狀態</h2>
+            <p class="subtitle">員工換手機時，直接為他重新產生 QR Code，登記成功後舊手機會自動失效。手機遺失可以先解除。</p>
+            <div class="table-wrap">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>員工</th>
+                            <th>手機</th>
+                            <th></th>
+                        </tr>
+                    </thead>
+                    <tbody id="device-tbody"></tbody>
+                </table>
+            </div>
+            <p class="link-row"><button id="revoke-all" type="button" class="link-btn">讓所有員工的手機失效</button></p>
+        </section>
+
+        <!-- 3. 只能在店裡打卡 -->
+        <section class="card">
+            <h2>只能在店裡打卡</h2>
+            <p class="subtitle">設定店的位置後，員工要在店的附近才能打卡，人沒到店就打不了。請<strong>你人在店裡</strong>、並開啟手機定位後再按設定。</p>
+
+            <div id="loc-status" class="status-line none"></div>
+
+            <div class="toolbar">
+                <div class="field">
+                    <label for="radius-select">允許範圍</label>
+                    <select id="radius-select">
+                        <option value="100">店的 100 公尺內</option>
+                        <option value="150" selected>店的 150 公尺內（建議）</option>
+                        <option value="300">店的 300 公尺內</option>
+                    </select>
+                </div>
+                <button id="loc-set" type="button" class="btn btn-primary">把我現在的位置設為店的位置</button>
+            </div>
+            <div class="form-actions">
+                <button id="loc-test" type="button" class="btn btn-ghost">測試：我現在離店多遠</button>
+                <button id="loc-clear" type="button" class="btn btn-ghost" hidden>取消位置限制</button>
+            </div>
+            <p class="hint">手機在室內定位可能有幾十公尺的誤差，所以範圍預設 150 公尺。員工第一次打卡時，手機會詢問是否允許存取位置，請他選「允許」。</p>
         </section>
     </main>
 

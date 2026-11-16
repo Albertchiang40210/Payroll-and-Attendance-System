@@ -8,13 +8,24 @@ const { PrismaClient } = require('@prisma/client');
 const prisma = new PrismaClient();
 
 let adminToken;
-let employee;
-let kioskToken;
-let code;
+let wang;   // 王小明
+let lee;    // 李小華
+let admin;
+let wangPhone;
 
-const kioskGet = (path) => request(app).get(path).set('Authorization', `Bearer ${kioskToken}`);
-const kioskClock = (body) =>
-    request(app).post('/api/kiosk/clock').set('Authorization', `Bearer ${kioskToken}`).send(body);
+const auth = (token) => ({ Authorization: `Bearer ${token}` });
+const asAdmin = (req) => req.set(auth(adminToken));
+const createQr = (userId, body = {}) => asAdmin(request(app).post('/api/kiosk/qr')).send({ userId, ...body });
+const pair = (code) => request(app).post('/api/kiosk/pair').send({ code });
+const phoneGet = (token, path) => request(app).get(path).set(auth(token));
+const phoneClock = (token, body) => request(app).post('/api/kiosk/clock').set(auth(token)).send(body);
+
+// 為某位員工產生 QR Code 並登記一支新手機，回傳該手機的 token
+async function registerPhone(userId) {
+    const qr = await createQr(userId);
+    const res = await pair(qr.body.code);
+    return res.body.token;
+}
 
 async function cleanup() {
     await prisma.attendance.deleteMany();
@@ -25,15 +36,16 @@ async function cleanup() {
 
 beforeAll(async () => {
     await cleanup();
-
     const hashed = await bcrypt.hash('adminpass1', 10);
-    await prisma.user.create({
+    admin = await prisma.user.create({
         data: { username: 'boss', password: hashed, name: 'Boss', role: 'ADMIN', hourly_rate: 0 }
     });
-    employee = await prisma.user.create({
-        data: { username: 'emp_x', password: hashed, name: '王小明', role: 'EMPLOYEE', hourly_rate: 190 }
+    wang = await prisma.user.create({
+        data: { username: 'emp_a', password: hashed, name: '王小明', role: 'EMPLOYEE', hourly_rate: 190 }
     });
-
+    lee = await prisma.user.create({
+        data: { username: 'emp_b', password: hashed, name: '李小華', role: 'EMPLOYEE', hourly_rate: 190 }
+    });
     const login = await request(app).post('/api/auth/login').send({ username: 'boss', password: 'adminpass1' });
     adminToken = login.body.token;
 });
@@ -43,209 +55,287 @@ afterAll(async () => {
     await prisma.$disconnect();
 });
 
-const createQr = (body = {}) =>
-    request(app).post('/api/kiosk/qr').set('Authorization', `Bearer ${adminToken}`).send(body);
-const pair = (c) => request(app).post('/api/kiosk/pair').send({ code: c });
-
-describe('Kiosk pairing', () => {
+describe('Creating a registration QR code', () => {
     it('refuses to pair when no QR code has been generated', async () => {
-        const res = await pair('ANYTHING');
+        expect((await pair('ANYTHING')).statusCode).toEqual(401);
+    });
+
+    it('only admins can generate one', async () => {
+        const res = await request(app).post('/api/kiosk/qr').send({ userId: wang.id });
         expect(res.statusCode).toEqual(401);
     });
 
-    it('only admins can generate the QR code', async () => {
-        const res = await request(app).post('/api/kiosk/qr').send({});
-        expect(res.statusCode).toEqual(401);
+    it('requires choosing an employee', async () => {
+        const res = await asAdmin(request(app).post('/api/kiosk/qr')).send({});
+        expect(res.statusCode).toEqual(400);
     });
 
-    it('generates a short-lived QR code for admins', async () => {
-        const res = await createQr();
+    it('refuses an unknown employee, an admin account and a deactivated employee', async () => {
+        expect((await createQr(999999)).statusCode).toEqual(404);
+        expect((await createQr(admin.id)).statusCode).toEqual(404);
+
+        const gone = await prisma.user.create({
+            data: { username: 'gone', password: 'x', name: '已離職', role: 'EMPLOYEE', hourly_rate: 1, active: false }
+        });
+        expect((await createQr(gone.id)).statusCode).toEqual(404);
+    });
+
+    it('generates a short-lived, single-use code for one employee', async () => {
+        const res = await createQr(wang.id);
         expect(res.statusCode).toEqual(200);
-        expect(res.body.set).toBe(true);
+        expect(res.body.employee).toEqual({ id: wang.id, name: '王小明' });
+        expect(res.body.max_uses).toBe(1);
+        expect(res.body.uses).toBe(0);
         expect(res.body.qr_data_url).toMatch(/^data:image\/svg\+xml;base64,/);
         expect(res.body.url).toMatch(/\/#c=[A-Z2-9]{10}$/);
-        expect(res.body.max_uses).toBe(3);
-        expect(res.body.uses).toBe(0);
-
         const minutesLeft = (new Date(res.body.expires_at) - Date.now()) / 60000;
         expect(minutesLeft).toBeGreaterThan(9);
         expect(minutesLeft).toBeLessThanOrEqual(10);
-        code = res.body.code;
-    });
-
-    it('rejects a wrong code', async () => {
-        const res = await pair('WRONGCODE1');
-        expect(res.statusCode).toEqual(401);
-    });
-
-    it('pairs a phone with the right code (case-insensitive) and counts the use', async () => {
-        const res = await pair(code.toLowerCase());
-        expect(res.statusCode).toEqual(200);
-        expect(res.body.token).toBeTruthy();
-        kioskToken = res.body.token;
-
-        const status = await request(app).get('/api/kiosk/qr').set('Authorization', `Bearer ${adminToken}`);
-        expect(status.body.uses).toBe(1);
     });
 });
 
-describe('Pairing code limits', () => {
-    it('stops working after the maximum number of phones', async () => {
-        const created = await createQr({ max_uses: 1 });
-        expect((await pair(created.body.code)).statusCode).toEqual(200);
-        expect((await pair(created.body.code)).statusCode).toEqual(401);
+describe('Registering a phone', () => {
+    it('rejects a wrong code', async () => {
+        expect((await pair('WRONGCODE1')).statusCode).toEqual(401);
     });
 
-    it('never lets more phones in than the limit, even when scanned at the same time', async () => {
-        const created = await createQr({ max_uses: 2 });
-        const results = await Promise.all(Array.from({ length: 6 }, () => pair(created.body.code)));
-        expect(results.filter((r) => r.statusCode === 200)).toHaveLength(2);
-        expect(results.filter((r) => r.statusCode === 401)).toHaveLength(4);
+    it('binds the phone to the employee the code was made for', async () => {
+        const qr = await createQr(wang.id);
+        const res = await pair(qr.body.code.toLowerCase());
+        expect(res.statusCode).toEqual(200);
+        expect(res.body.name).toBe('王小明');
+        wangPhone = res.body.token;
+
+        const me = await phoneGet(wangPhone, '/api/kiosk/me');
+        expect(me.body).toMatchObject({ id: wang.id, name: '王小明', location_required: false });
     });
 
-    it('stops working after it expires (a photo of the QR code becomes useless)', async () => {
-        const created = await createQr({ ttl_minutes: 5 });
-        await prisma.pairingCode.update({
-            where: { code: created.body.code },
-            data: { expiresAt: new Date(Date.now() - 1000) }
-        });
-        expect((await pair(created.body.code)).statusCode).toEqual(401);
+    it('cannot be used a second time (a photo of the QR code is useless)', async () => {
+        const qr = await createQr(lee.id);
+        expect((await pair(qr.body.code)).statusCode).toEqual(200);
+        expect((await pair(qr.body.code)).statusCode).toEqual(401);
+    });
 
-        const status = await request(app).get('/api/kiosk/qr').set('Authorization', `Bearer ${adminToken}`);
+    it('lets exactly one phone in when several scan at the same time', async () => {
+        const qr = await createQr(lee.id);
+        const results = await Promise.all(Array.from({ length: 6 }, () => pair(qr.body.code)));
+        expect(results.filter((r) => r.statusCode === 200)).toHaveLength(1);
+        expect(results.filter((r) => r.statusCode === 401)).toHaveLength(5);
+    });
+
+    it('stops working after it expires', async () => {
+        const qr = await createQr(lee.id);
+        await prisma.pairingCode.update({ where: { code: qr.body.code }, data: { expiresAt: new Date(Date.now() - 1000) } });
+        expect((await pair(qr.body.code)).statusCode).toEqual(401);
+
+        const status = await asAdmin(request(app).get('/api/kiosk/qr'));
         expect(status.body.set).toBe(false);
     });
 
     it('voids the previous code when a new one is generated', async () => {
-        const first = await createQr();
-        const second = await createQr();
+        const first = await createQr(wang.id);
+        const second = await createQr(lee.id);
         expect((await pair(first.body.code)).statusCode).toEqual(401);
         expect((await pair(second.body.code)).statusCode).toEqual(200);
     });
-
-    it('does not log out phones that are already registered', async () => {
-        await createQr();
-        const res = await kioskGet('/api/kiosk/employees');
-        expect(res.statusCode).toEqual(200);
-    });
 });
 
-describe('Kiosk access control', () => {
-    it('blocks the employee list without a device token', async () => {
-        const res = await request(app).get('/api/kiosk/employees');
-        expect(res.statusCode).toEqual(401);
+describe('A phone can only punch for its own employee', () => {
+    it('blocks requests without a registered phone', async () => {
+        expect((await request(app).get('/api/kiosk/me')).statusCode).toEqual(401);
+        expect((await request(app).post('/api/kiosk/clock').send({ type: 'in' })).statusCode).toEqual(401);
     });
 
-    it('blocks a normal login token from the kiosk endpoints', async () => {
-        const res = await request(app).get('/api/kiosk/employees').set('Authorization', `Bearer ${adminToken}`);
-        expect(res.statusCode).toEqual(401);
+    it('blocks a normal login token from the phone endpoints', async () => {
+        expect((await phoneGet(adminToken, '/api/kiosk/me')).statusCode).toEqual(401);
     });
 
-    it('does not let a device token use admin APIs', async () => {
-        for (const path of ['/api/employees', '/api/salary?month=2026-11', '/api/attendance/today']) {
-            const res = await request(app).get(path).set('Authorization', `Bearer ${kioskToken}`);
-            expect(res.statusCode).toEqual(401);
+    it('does not let a phone use admin APIs', async () => {
+        for (const path of ['/api/employees', '/api/salary?month=2026-11', '/api/attendance/today', '/api/kiosk/devices']) {
+            expect((await phoneGet(wangPhone, path)).statusCode).toEqual(401);
         }
     });
 
-    it('lists only active employees, without any wage information', async () => {
-        const res = await kioskGet('/api/kiosk/employees');
-        expect(res.statusCode).toEqual(200);
-        expect(res.body).toEqual([{ id: employee.id, name: '王小明' }]);
-    });
-});
-
-describe('Kiosk punching', () => {
-    it('shows an empty record before punching', async () => {
-        const res = await kioskGet(`/api/kiosk/records?userId=${employee.id}`);
-        expect(res.statusCode).toEqual(200);
-        expect(res.body.today).toEqual([]);
+    it('no longer offers a list of employees to pick from', async () => {
+        expect((await phoneGet(wangPhone, '/api/kiosk/employees')).statusCode).toEqual(404);
     });
 
     it('blocks overtime before the normal shift is finished', async () => {
-        const res = await kioskClock({ userId: employee.id, type: 'in', punch_type: '加班' });
+        const res = await phoneClock(wangPhone, { type: 'in', punch_type: '加班' });
         expect(res.statusCode).toEqual(400);
     });
 
-    it('punches in and out by choosing a name', async () => {
-        const inRes = await kioskClock({ userId: employee.id, type: 'in' });
+    it('punches in and out', async () => {
+        const inRes = await phoneClock(wangPhone, { type: 'in' });
         expect(inRes.statusCode).toEqual(200);
         expect(inRes.body.message).toContain('王小明');
 
-        const dup = await kioskClock({ userId: employee.id, type: 'in' });
-        expect(dup.statusCode).toEqual(400);
-
-        const outRes = await kioskClock({ userId: employee.id, type: 'out' });
-        expect(outRes.statusCode).toEqual(200);
+        expect((await phoneClock(wangPhone, { type: 'in' })).statusCode).toEqual(400);
+        expect((await phoneClock(wangPhone, { type: 'out' })).statusCode).toEqual(200);
     });
 
-    it('shows the punch records afterwards', async () => {
-        const res = await kioskGet(`/api/kiosk/records?userId=${employee.id}`);
-        expect(res.body.today).toHaveLength(1);
-        expect(res.body.today[0].log_out).not.toBeNull();
-        expect(res.body.recent).toHaveLength(1);
+    it('ignores any attempt to name another employee', async () => {
+        // 即使在請求裡指定李小華，打卡仍然記在手機的主人（王小明）身上
+        const res = await phoneClock(wangPhone, { type: 'in', punch_type: '加班', userId: lee.id });
+        expect(res.statusCode).toEqual(200);
+
+        expect(await prisma.attendance.count({ where: { userId: lee.id } })).toBe(0);
+        expect(await prisma.attendance.count({ where: { userId: wang.id } })).toBe(2);
     });
 
-    it('allows overtime once the normal shift is finished', async () => {
-        const inRes = await kioskClock({ userId: employee.id, type: 'in', punch_type: '加班' });
-        expect(inRes.statusCode).toEqual(200);
-        const outRes = await kioskClock({ userId: employee.id, type: 'out', punch_type: '加班' });
-        expect(outRes.statusCode).toEqual(200);
-    });
-
-    it('cannot punch for an admin account', async () => {
-        const admin = await prisma.user.findUnique({ where: { username: 'boss' } });
-        const res = await kioskClock({ userId: admin.id, type: 'in' });
-        expect(res.statusCode).toEqual(404);
+    it('only shows the owner their own records', async () => {
+        const res = await phoneGet(wangPhone, '/api/kiosk/records');
+        expect(res.statusCode).toEqual(200);
+        expect(res.body.name).toBe('王小明');
+        expect(res.body.today).toHaveLength(2);
+        expect(res.body.month).toBeDefined();
     });
 });
 
-describe('Deactivated employees and revoking phones', () => {
-    it('hides a deactivated employee and refuses to punch for them', async () => {
-        await request(app)
-            .put(`/api/employees/${employee.id}`)
-            .set('Authorization', `Bearer ${adminToken}`)
-            .send({ active: false });
-
-        const list = await kioskGet('/api/kiosk/employees');
-        expect(list.body).toEqual([]);
-
-        const res = await kioskClock({ userId: employee.id, type: 'in' });
-        expect(res.statusCode).toEqual(404);
+describe('Changing, unbinding and revoking phones', () => {
+    it('shows which employees have a registered phone', async () => {
+        const res = await asAdmin(request(app).get('/api/kiosk/devices'));
+        expect(res.statusCode).toEqual(200);
+        const byName = Object.fromEntries(res.body.map((u) => [u.name, u.bound]));
+        expect(byName['王小明']).toBe(true);
     });
 
-    it('invalidates every registered phone when the admin revokes them all', async () => {
-        const before = await kioskGet('/api/kiosk/employees');
-        expect(before.statusCode).toEqual(200);
-
-        const revoke = await request(app).post('/api/kiosk/revoke-all').set('Authorization', `Bearer ${adminToken}`);
-        expect(revoke.statusCode).toEqual(200);
-
-        const after = await kioskGet('/api/kiosk/employees');
-        expect(after.statusCode).toEqual(401);
+    it('replaces the old phone when the employee registers a new one', async () => {
+        const newPhone = await registerPhone(wang.id);
+        expect((await phoneGet(newPhone, '/api/kiosk/me')).statusCode).toEqual(200);
+        expect((await phoneGet(wangPhone, '/api/kiosk/me')).statusCode).toEqual(401);
+        wangPhone = newPhone;
     });
 
-    it('only admins can revoke all phones', async () => {
-        const res = await request(app).post('/api/kiosk/revoke-all');
+    it('does not log out other phones when a new code is generated', async () => {
+        await createQr(lee.id);
+        expect((await phoneGet(wangPhone, '/api/kiosk/me')).statusCode).toEqual(200);
+    });
+
+    it('lets the admin unbind one employee phone', async () => {
+        const res = await asAdmin(request(app).delete(`/api/kiosk/devices/${wang.id}`));
+        expect(res.statusCode).toEqual(200);
+        expect((await phoneGet(wangPhone, '/api/kiosk/me')).statusCode).toEqual(401);
+    });
+
+    it('stops a phone from working once its employee is deactivated', async () => {
+        wangPhone = await registerPhone(wang.id);
+        await asAdmin(request(app).put(`/api/employees/${wang.id}`)).send({ active: false });
+        expect((await phoneGet(wangPhone, '/api/kiosk/me')).statusCode).toEqual(401);
+        await asAdmin(request(app).put(`/api/employees/${wang.id}`)).send({ active: true });
+    });
+
+    it('revokes every phone at once', async () => {
+        const phoneA = await registerPhone(wang.id);
+        const phoneB = await registerPhone(lee.id);
+        const res = await asAdmin(request(app).post('/api/kiosk/revoke-all'));
+        expect(res.statusCode).toEqual(200);
+        expect((await phoneGet(phoneA, '/api/kiosk/me')).statusCode).toEqual(401);
+        expect((await phoneGet(phoneB, '/api/kiosk/me')).statusCode).toEqual(401);
+    });
+
+    it('only admins can unbind or revoke', async () => {
+        expect((await request(app).delete(`/api/kiosk/devices/${wang.id}`)).statusCode).toEqual(401);
+        expect((await request(app).post('/api/kiosk/revoke-all')).statusCode).toEqual(401);
+    });
+});
+
+describe('Punching only at the store', () => {
+    const STORE = { lat: 25.1, lng: 121.5 };
+    let phone;
+
+    const setStore = (body) => asAdmin(request(app).put('/api/kiosk/location')).send(body);
+    const here = (extra = {}) => ({ lat: STORE.lat + 0.0003, lng: STORE.lng, accuracy: 20, ...extra }); // 約 33 公尺
+    const faraway = { lat: STORE.lat + 0.01, lng: STORE.lng, accuracy: 20 };                          // 約 1.1 公里
+
+    beforeAll(async () => {
+        phone = await registerPhone(lee.id);
+    });
+
+    it('does not ask for a location until the store location is set', async () => {
+        const me = await phoneGet(phone, '/api/kiosk/me');
+        expect(me.body.location_required).toBe(false);
+        // 尚未設定位置時，不帶位置也能打卡
+        expect((await phoneClock(phone, { type: 'in' })).statusCode).toEqual(200);
+    });
+
+    it('only admins can set the store location', async () => {
+        const res = await request(app).put('/api/kiosk/location').send({ ...STORE, radius: 150 });
         expect(res.statusCode).toEqual(401);
+        expect((await phoneGet(phone, '/api/kiosk/location')).statusCode).toEqual(401);
+    });
+
+    it('validates the store location', async () => {
+        expect((await setStore({ lat: 120, lng: 121.5, radius: 150 })).statusCode).toEqual(400);
+        expect((await setStore({ ...STORE, radius: 10 })).statusCode).toEqual(400);
+        expect((await setStore({ ...STORE, radius: 5000 })).statusCode).toEqual(400);
+    });
+
+    it('saves the store location', async () => {
+        const res = await setStore({ ...STORE, radius: 150 });
+        expect(res.statusCode).toEqual(200);
+        const got = await asAdmin(request(app).get('/api/kiosk/location'));
+        expect(got.body).toEqual({ set: true, ...STORE, radius: 150 });
+
+        const me = await phoneGet(phone, '/api/kiosk/me');
+        expect(me.body.location_required).toBe(true);
+    });
+
+    it('refuses to punch without a location', async () => {
+        const res = await phoneClock(phone, { type: 'out' });
+        expect(res.statusCode).toEqual(400);
+        expect(res.body.message).toContain('位置');
+    });
+
+    it('refuses to punch from far away (someone who is not at the store)', async () => {
+        const res = await phoneClock(phone, { type: 'out', location: faraway });
+        expect(res.statusCode).toEqual(403);
+        expect(res.body.message).toContain('不在店裡');
+    });
+
+    it('refuses a location that is too inaccurate to trust', async () => {
+        const res = await phoneClock(phone, { type: 'out', location: here({ accuracy: 800 }) });
+        expect(res.statusCode).toEqual(400);
+    });
+
+    it('refuses a malformed location', async () => {
+        const res = await phoneClock(phone, { type: 'out', location: { lat: 'x', lng: 1 } });
+        expect(res.statusCode).toEqual(400);
+    });
+
+    it('did not record anything from the blocked attempts', async () => {
+        const rec = await prisma.attendance.findFirst({ where: { userId: lee.id } });
+        expect(rec.clock_out).toBeNull();
+    });
+
+    it('allows punching near the store and records how far away it was', async () => {
+        const res = await phoneClock(phone, { type: 'out', location: here() });
+        expect(res.statusCode).toEqual(200);
+
+        const rec = await prisma.attendance.findFirst({ where: { userId: lee.id } });
+        expect(rec.out_distance).toBeGreaterThan(20);
+        expect(rec.out_distance).toBeLessThan(50);
+        expect(rec.in_distance).toBeNull(); // 上班打卡時尚未設定位置
+    });
+
+    it('lets the admin switch the restriction off again', async () => {
+        const res = await asAdmin(request(app).delete('/api/kiosk/location'));
+        expect(res.statusCode).toEqual(200);
+        const me = await phoneGet(phone, '/api/kiosk/me');
+        expect(me.body.location_required).toBe(false);
     });
 });
 
 describe('Employee creation without credentials', () => {
     it('creates an employee with only a name and hourly rate', async () => {
-        const res = await request(app)
-            .post('/api/employees')
-            .set('Authorization', `Bearer ${adminToken}`)
-            .send({ name: '李小華', hourly_rate: 200 });
+        const res = await asAdmin(request(app).post('/api/employees')).send({ name: '張小美', hourly_rate: 200 });
         expect(res.statusCode).toEqual(200);
         expect(res.body.data.role).toBe('EMPLOYEE');
         expect(res.body.data.username).toMatch(/^emp_/);
     });
 
     it('still requires credentials for an admin', async () => {
-        const res = await request(app)
-            .post('/api/employees')
-            .set('Authorization', `Bearer ${adminToken}`)
-            .send({ name: '新老闆', hourly_rate: 0, role: 'ADMIN' });
+        const res = await asAdmin(request(app).post('/api/employees')).send({ name: '新老闆', hourly_rate: 0, role: 'ADMIN' });
         expect(res.statusCode).toEqual(400);
     });
 });

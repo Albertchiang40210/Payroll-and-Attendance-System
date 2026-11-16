@@ -985,3 +985,13 @@ input[type="number"] {
         font-size: 64px;
     }
 }
+
+/* ---------- 員工手機狀態（老闆後台） ---------- */
+.badge-bound {
+    background: var(--success-soft);
+    color: var(--success);
+}
+.badge-unbound {
+    background: #eceff3;
+    color: var(--muted);
+}

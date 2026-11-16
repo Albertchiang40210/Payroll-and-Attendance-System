@@ -46,7 +46,7 @@ exports.restrictTo = (...roles) => {
     };
 };
 
-// 店內裝置驗證：token 需由「店內通行碼」換得，且版本與目前通行碼一致
+// 員工手機驗證：token 需對應一支「已登記且未被解除」的裝置，並綁定到一位在職員工
 exports.kioskProtect = catchAsync(async (req, res, next) => {
     let token;
     if (req.headers.authorization && req.headers.authorization.startsWith('Bearer')) {
@@ -57,14 +57,22 @@ exports.kioskProtect = catchAsync(async (req, res, next) => {
         error.statusCode = 401;
         return error;
     };
-    if (!token) throw unauthorized('此裝置尚未登記，請輸入店內通行碼。');
+    if (!token) throw unauthorized('此手機尚未登記，請向店長索取登記 QR Code。');
 
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
-    if (decoded.kiosk !== true) throw unauthorized('此裝置尚未登記，請輸入店內通行碼。');
+    if (decoded.kiosk !== true || typeof decoded.did !== 'number') {
+        throw unauthorized('此手機尚未登記，請向店長索取登記 QR Code。');
+    }
 
-    const row = await prisma.setting.findUnique({ where: { key: 'kiosk_version' } });
-    const currentVersion = row ? Number(row.value) : 1;
-    if (decoded.v !== currentVersion) throw unauthorized('通行碼已更新，請重新輸入店內通行碼。');
+    const device = await prisma.device.findUnique({
+        where: { id: decoded.did },
+        include: { user: { select: { id: true, name: true, role: true, active: true } } }
+    });
+    if (!device) throw unauthorized('此手機的登記已被解除，請向店長重新索取登記 QR Code。');
+    if (device.user.role !== 'EMPLOYEE' || !device.user.active) {
+        throw unauthorized('這個帳號已停用，如有疑問請洽店長。');
+    }
 
+    req.kioskUser = { id: device.user.id, name: device.user.name };
     next();
 });

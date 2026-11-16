@@ -19,6 +19,8 @@ model User {
   attendances Attendance[]
   leaves      Leave[]
   shifts      Shift[]
+  devices     Device[]
+  pairingCodes PairingCode[]
 
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
@@ -37,6 +39,8 @@ model Attendance {
   clock_in   DateTime  @default(now())
   clock_out  DateTime?
   punch_type String    @default("正常") // "正常" or "加班"
+  in_distance  Int?      // 上班打卡時離店的距離（公尺），未啟用定位限制時為空
+  out_distance Int?      // 下班打卡時離店的距離（公尺）
   manual     Boolean   @default(false) // 由老闆補登/修改過的紀錄
   note       String?   @db.VarChar(200)
 
@@ -81,12 +85,22 @@ model Setting {
   value String
 }
 
-// 員工手機登記用的一次性 QR Code：有時效、有次數上限，用完即失效
+// 員工手機登記用的一次性 QR Code：綁定某一位員工，有時效、有次數上限，用完即失效
 model PairingCode {
   id        Int      @id @default(autoincrement())
   code      String   @unique
+  userId    Int
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   expiresAt DateTime
-  maxUses   Int
+  maxUses   Int      @default(1)
   uses      Int      @default(0)
+  createdAt DateTime @default(now())
+}
+
+// 已登記的員工手機：一支手機只屬於一位員工，只能替該員工打卡
+model Device {
+  id        Int      @id @default(autoincrement())
+  userId    Int
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   createdAt DateTime @default(now())
 }

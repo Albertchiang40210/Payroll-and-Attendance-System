@@ -52,7 +52,7 @@ function formatDate(ymd, todayYmd) {
     return ymd === todayYmd ? `今天 ${label}` : label;
 }
 
-function createPanel(root, { load, punch, name }) {
+function createPanel(root, { load, punch, name, needLocation }) {
     root.replaceChildren(document.getElementById('clock-panel-tpl').content.cloneNode(true));
     tickClock();
 
@@ -174,7 +174,20 @@ function createPanel(root, { load, punch, name }) {
             setMessage(resultEl, null);
 
             try {
-                const { res, data } = await punch(btn.dataset.type, btn.dataset.punch || '正常');
+                // 店有設定「只能在店裡打卡」時，先取得手機位置一起送出
+                let location = null;
+                if (needLocation) {
+                    setMessage(resultEl, '正在確認你的位置…', 'success');
+                    try {
+                        const c = await HR.getPosition();
+                        location = { lat: c.latitude, lng: c.longitude, accuracy: c.accuracy };
+                    } catch (err) {
+                        setMessage(resultEl, err.message, 'error');
+                        return;
+                    }
+                }
+
+                const { res, data } = await punch(btn.dataset.type, btn.dataset.punch || '正常', location);
                 if (res.ok) {
                     setMessage(resultEl, (data && data.message) || '打卡成功', 'success');
                 } else if (res.status !== 401) {
@@ -198,7 +211,6 @@ const pairMessage = document.getElementById('pair-message');
 const pairForm = document.getElementById('pair-form');
 const pairBtn = document.getElementById('pair-btn');
 const pairCodeInput = document.getElementById('pair-code');
-const nameGrid = document.getElementById('name-grid');
 const kioskMessage = document.getElementById('kiosk-message');
 const punchName = document.getElementById('punch-name');
 
@@ -231,65 +243,40 @@ pairForm.addEventListener('submit', (e) => {
     if (code) pairWith(code);
 });
 
-// 通行碼更換後，舊手機需重新掃描
+// 手機登記被解除（換手機、離職）時，回到登記畫面
 window.onKioskExpired = (message) => {
     route();
-    setMessage(pairMessage, message || '通行碼已更新，請重新掃描 QR Code。', 'error');
+    setMessage(pairMessage, message || '這支手機的登記已失效，請向店長重新索取 QR Code。', 'error');
 };
 
-async function loadNames() {
+// 已登記的手機：直接顯示「自己」的打卡畫面（沒有名單可選，只能替自己打卡）
+async function showMyPunch() {
+    showView('punch');
     setMessage(kioskMessage, null);
-    nameGrid.replaceChildren();
+    document.getElementById('kiosk-panel').replaceChildren();
     try {
-        const { res, data } = await HR.api('/kiosk/employees', { kiosk: true });
-        if (!res.ok || !Array.isArray(data)) {
-            if (res.status !== 401) setMessage(kioskMessage, HR.errorText(data, '讀取名單失敗，請稍後再試。'), 'error');
+        const { res, data } = await HR.api('/kiosk/me', { kiosk: true });
+        if (!res.ok || !data) {
+            if (res.status !== 401) setMessage(kioskMessage, HR.errorText(data, '讀取失敗，請稍後再試。'), 'error');
             return;
         }
-        if (data.length === 0) {
-            setMessage(kioskMessage, '還沒有員工名單，請老闆先到後台新增員工。', 'error');
-            return;
-        }
-        data.forEach((emp) => {
-            const btn = document.createElement('button');
-            btn.type = 'button';
-            btn.className = 'btn btn-name';
-            const avatar = document.createElement('span');
-            avatar.className = 'avatar';
-            avatar.textContent = [...emp.name][0];
-            const label = document.createElement('span');
-            label.textContent = emp.name;
-            btn.append(avatar, label);
-            btn.addEventListener('click', () => openPunch(emp));
-            nameGrid.appendChild(btn);
+        punchName.textContent = data.name;
+        const panel = createPanel(document.getElementById('kiosk-panel'), {
+            name: data.name,
+            needLocation: data.location_required,
+            load: () => HR.api('/kiosk/records', { kiosk: true }),
+            punch: (type, punchType, location) =>
+                HR.api('/kiosk/clock', {
+                    method: 'POST',
+                    kiosk: true,
+                    body: JSON.stringify({ type, punch_type: punchType, ...(location && { location }) })
+                })
         });
+        panel.refresh();
     } catch (err) {
         setMessage(kioskMessage, '網路連線失敗，請稍後再試。', 'error');
     }
 }
-
-let kioskPanel = null;
-function openPunch(emp) {
-    punchName.textContent = emp.name;
-    kioskPanel = createPanel(document.getElementById('kiosk-panel'), {
-        name: emp.name,
-        load: () => HR.api(`/kiosk/records?userId=${emp.id}`, { kiosk: true }),
-        punch: (type, punchType) =>
-            HR.api('/kiosk/clock', {
-                method: 'POST',
-                kiosk: true,
-                body: JSON.stringify({ userId: emp.id, type, punch_type: punchType })
-            })
-    });
-    showView('punch');
-    kioskPanel.refresh();
-}
-
-document.getElementById('punch-back').addEventListener('click', () => {
-    kioskPanel = null;
-    showView('kiosk');
-    loadNames();
-});
 
 // ======================================================================
 // 老闆：帳號密碼登入、今日出勤
@@ -480,8 +467,7 @@ function route() {
         showView('dashboard');
         loadDashboard();
     } else if (HR.getKioskToken()) {
-        showView('kiosk');
-        loadNames();
+        showMyPunch();
     } else {
         showView('pair');
     }

@@ -20,7 +20,7 @@ const fail = (message) => {
  * 打卡核心邏輯（登入者打卡與店內裝置打卡共用）。
  * type: 'in' | 'out'；punchType: '正常' | '加班'
  */
-exports.performPunch = async ({ userId, type, punchType = '正常' }) => {
+exports.performPunch = async ({ userId, type, punchType = '正常', distance = null }) => {
     const now = getTaipeiTime();
     const today = now.format('YYYY-MM-DD');
     const timeString = now.format('HH:mm:ss');
@@ -44,7 +44,7 @@ exports.performPunch = async ({ userId, type, punchType = '正常' }) => {
             throw fail(`❌ 您今天已經打過【${punchType}】上班卡囉！`);
         }
         await prisma.attendance.create({
-            data: { userId, work_date: today, punch_type: punchType, clock_in: now.toDate() }
+            data: { userId, work_date: today, punch_type: punchType, clock_in: now.toDate(), in_distance: distance }
         });
         return { time: timeString, message: `☀️ 【${punchType}】上班打卡成功！\n時間：${timeString}` };
     }
@@ -57,7 +57,7 @@ exports.performPunch = async ({ userId, type, punchType = '正常' }) => {
     }
     await prisma.attendance.update({
         where: { id: todaysRecord.id },
-        data: { clock_out: now.toDate() }
+        data: { clock_out: now.toDate(), out_distance: distance }
     });
     return { time: timeString, message: `🌙 【${punchType}】下班打卡成功！\n時間：${timeString}` };
 };

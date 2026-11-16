@@ -7,7 +7,8 @@
 ## ✨ 功能
 
 - **JWT 登入 + 角色權限（RBAC）**：`ADMIN`（老闆）以帳密登入後台；`EMPLOYEE`（員工）不需帳密。
-- **員工選名字打卡**：老闆在後台產生「員工登記 QR Code」，員工用手機掃描一次即完成裝置登記（取得僅能打卡的裝置 token），之後只要選自己的名字即可打卡，並可查看自己最近 14 天的打卡紀錄（不含薪資）。**登記用的 QR Code 為一次性**：預設 10 分鐘內有效、最多 3 支手機使用，過期或用完即失效，因此被拍照也無法再使用；也可複製連結以 LINE 傳給員工。另可「讓所有已登記手機失效」（離職、手機遺失時）。離職員工可「停用」（從名單移除但保留歷史紀錄）。
+- **員工手機綁定 + 專屬 QR Code**：員工不需帳密。老闆在後台**選一位員工**產生專屬登記 QR Code（預設 10 分鐘有效、只能用一次，被拍照也無法再使用，也可用 LINE 傳連結給本人），員工掃描後這支手機就**只屬於這位員工**，只能替他自己打卡，打開網頁直接是自己的打卡畫面（沒有名單可選，無法代打）。員工換手機時重新產生即可，舊手機自動失效；離職停用後手機也立即不能打卡。打卡畫面可查看自己最近 14 天的紀錄與本月統計（不含薪資）。
+- **只能在店裡打卡（定位驗證）**：老闆人在店裡時按一次「把我現在的位置設為店的位置」，之後員工手機打卡時會回報位置，離店超過設定範圍（預設 150 公尺）或定位不準、未允許定位都無法打卡；每筆打卡會記錄離店距離供事後查核。未設定位置時不限制。
 - **加班打卡**：需先完成當天「正常」班的上、下班打卡才能使用，後端強制檢查；下班打卡一律需先有同班別的上班打卡。
 - **休假**：整天沒有任何打卡紀錄的日子自動列為休假（只算到昨天、員工到職日之後、在職員工），顯示於員工紀錄、薪資核算與當日查詢。
 - **補打卡**（ADMIN）：老闆可替員工補登、修改、刪除出勤紀錄（不可補未來時間、下班需晚於上班），補登紀錄會標記「補登」並可附備註。
@@ -30,7 +31,7 @@
 | 日誌 | Winston（含每日輪替檔案） |
 | 測試 / CI | Jest + Supertest、GitHub Actions（含 MySQL service） |
 | 部署 | Docker / docker-compose |
-| 前端 | 原生 HTML/CSS/JS，淺色簡潔、手機優先（`public/`：打卡頁與老闆首頁 `index.html`、員工管理 `employees.html`、員工登記 `qrcode.html`、補打卡 `attendance.html`、薪資核算 `boss.html`；店標放在 `public/img/logo.jpg`） |
+| 前端 | 原生 HTML/CSS/JS，淺色簡潔、手機優先（`public/`：打卡頁與老闆首頁 `index.html`、員工管理 `employees.html`、員工手機與打卡位置 `qrcode.html`、補打卡 `attendance.html`、薪資核算 `boss.html`；店標放在 `public/img/logo.jpg`） |
 
 ## 🚀 快速啟動
 
@@ -75,7 +76,7 @@ DATABASE_URL="mysql://root:<密碼>@localhost:3311/punch_test" JWT_SECRET=test n
 DATABASE_URL="mysql://root:<密碼>@localhost:3311/punch_test" JWT_SECRET=test npm test
 ```
 
-目前涵蓋打卡流程（未授權、上班、重複打卡、下班）、加班前置規則，以及店內裝置打卡（一次性登記碼（時效、次數上限、同時搶名額）、權限隔離、停用員工、讓所有手機失效）。測試已設定為依序執行（`--runInBand`）。
+目前涵蓋打卡流程（未授權、上班、重複打卡、下班）、加班前置規則，以及店內裝置打卡（專屬一次性登記碼（時效、同時搶名額）、手機只能替自己打卡、換手機、解除與停用、定位驗證（距離、精度、未開定位））。測試已設定為依序執行（`--runInBand`）。
 
 ## 📡 API
 
@@ -94,11 +95,13 @@ DATABASE_URL="mysql://root:<密碼>@localhost:3311/punch_test" JWT_SECRET=test n
 | 出勤 | GET | `/api/attendance/my-records` | 登入者最近 14 天紀錄與本月統計 | 登入者 |
 | 補打卡 | GET / POST | `/api/records` | 某員工某月紀錄（含休假日）/ 補登一筆 | ADMIN |
 | 補打卡 | PUT / DELETE | `/api/records/:id` | 修改 / 刪除一筆紀錄 | ADMIN |
-| 店內打卡 | POST | `/api/kiosk/pair` | 以 QR Code 通行碼換取裝置 token | 公開（限流） |
-| 店內打卡 | GET | `/api/kiosk/employees`、`/api/kiosk/records` | 在職員工名單 / 某員工最近紀錄 | 裝置 token |
-| 店內打卡 | POST | `/api/kiosk/clock` | 選名字打卡 | 裝置 token |
-| 店內打卡 | GET / POST | `/api/kiosk/qr` | 檢視目前有效的登記 QR Code / 產生新的（`ttl_minutes`、`max_uses`） | ADMIN |
-| 店內打卡 | POST | `/api/kiosk/revoke-all` | 讓所有已登記手機失效 | ADMIN |
+| 店內打卡 | POST | `/api/kiosk/pair` | 以專屬 QR Code 通行碼綁定手機並取得裝置 token | 公開（限流） |
+| 店內打卡 | GET | `/api/kiosk/me`、`/api/kiosk/records` | 這支手機的主人 / 其最近紀錄 | 裝置 token |
+| 店內打卡 | POST | `/api/kiosk/clock` | 替綁定的員工打卡（`type`、`punch_type`、`location`） | 裝置 token |
+| 店內打卡 | GET / POST | `/api/kiosk/qr` | 目前有效的登記 QR Code / 為某員工產生（`userId`、`ttl_minutes`） | ADMIN |
+| 店內打卡 | GET / DELETE | `/api/kiosk/devices`、`/api/kiosk/devices/:userId` | 各員工手機登記狀態 / 解除某員工的手機 | ADMIN |
+| 店內打卡 | GET / PUT / DELETE | `/api/kiosk/location` | 店的位置與允許範圍（定位驗證） | ADMIN |
+| 店內打卡 | POST | `/api/kiosk/revoke-all` | 讓所有員工手機失效 | ADMIN |
 | 請假 | POST | `/api/leaves` | 送出申請 | 登入者 |
 | 請假 | GET | `/api/leaves` | 所有請假單 | ADMIN |
 | 請假 | PUT | `/api/leaves/:id/status` | 審核（`APPROVED` / `REJECTED`） | ADMIN |
@@ -127,5 +130,5 @@ tests/                   Jest + Supertest
 - 時薪使用浮點數、金額四捨五入至整數；若用於正式帳務建議改用 `Decimal`。
 - 測試覆蓋範圍僅限打卡流程，薪資計算尚缺單元測試。
 - JWT 存放於前端 `localStorage`，正式環境建議改用 httpOnly cookie。
-- 「選名字打卡」無法防止持有 QR Code 的人冒名代打，保護來自 QR Code 只提供給到店員工；如需更嚴格可為每位員工加上 PIN 碼。
+- 定位驗證依賴手機 GPS：室內可能有數十公尺誤差（故預設範圍 150 公尺），且無法防範刻意使用「虛擬定位」App 的人；每筆打卡記錄的離店距離可供事後查核。一支手機綁定一位員工，無法代他人打卡，但員工可能把手機借給他人使用。
 - 打卡以「當天日期」配對上下班，跨午夜的班次（如 23:00 上班、隔日 01:00 下班）無法正確下班打卡。

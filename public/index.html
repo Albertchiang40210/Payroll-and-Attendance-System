@@ -60,7 +60,7 @@
         <div class="login-wrap hero-follow">
             <div class="card">
                 <h1>歡迎使用打卡系統</h1>
-                <p class="subtitle">請向店長索取員工登記 QR Code（只有短時間有效），用手機掃描後即可打卡。</p>
+                <p class="subtitle">請向店長索取你的專屬登記 QR Code（短時間有效、只能用一次），用手機掃描後，這支手機就只能用來幫你打卡。</p>
 
                 <div id="pair-message" class="result" role="status" aria-live="polite" hidden></div>
 
@@ -77,36 +77,16 @@
         </div>
     </div>
 
-    <!-- 2. 已登記的手機：選名字 -->
-    <div id="kiosk-view" hidden>
-        <div class="hero">
-        <img class="hero-logo" data-logo src="/img/logo.jpg" alt="車庫小籠包" width="88" height="88">
-        <div class="hero-name">車庫小籠包</div>
-        <div class="hero-sub">員工打卡</div>
-    </div>
-        <main class="container hero-follow">
-            <section class="card">
-                <div class="now">
-                    <div class="now-date"></div>
-                    <div class="now-time">--:--:--</div>
-                </div>
-                <h2 class="center">請選擇你的名字</h2>
-                <div id="kiosk-message" class="result error" role="alert" hidden></div>
-                <div id="name-grid" class="name-grid"></div>
-            </section>
-            <footer class="site-foot">車庫小籠包 · 手工現做<br><button type="button" class="link-btn" data-action="show-login">老闆登入</button></footer>
-        </main>
-    </div>
-
-    <!-- 3. 選好名字後的打卡畫面 -->
+    <!-- 2. 已登記的手機：自己的打卡畫面 -->
     <div id="punch-view" hidden>
         <header class="topbar">
-            <button type="button" id="punch-back" class="btn btn-ghost">← 換人</button>
             <div class="brand"><img class="brand-logo" data-logo src="/img/logo.jpg" alt="" width="32" height="32"><span id="punch-name"></span></div>
             <span></span>
         </header>
         <main class="container">
+            <div id="kiosk-message" class="result error" role="alert" hidden></div>
             <section class="card" id="kiosk-panel"></section>
+            <footer class="site-foot">車庫小籠包 · 手工現做<br><button type="button" class="link-btn" data-action="show-login">老闆登入</button></footer>
         </main>
     </div>
 
@@ -150,8 +130,8 @@
                 <p class="subtitle">還沒有員工，照著三個步驟設定就能開始打卡（下方有對應的功能入口）：</p>
                 <ol>
                     <li><strong>新增員工</strong>：只需要姓名和時薪，不用帳號密碼。</li>
-                    <li><strong>產生員工登記 QR Code</strong>：員工第一次打卡時，現場產生並讓他掃描（一次性，過期就失效）。</li>
-                    <li>員工用手機掃描 QR Code，之後只要選自己的名字就能打卡。</li>
+                    <li><strong>為員工產生專屬 QR Code</strong>：選擇員工後現場讓他掃描（一次性，過期就失效）。</li>
+                    <li>員工用手機掃描，這支手機就綁定給他，之後打開網頁就是自己的打卡畫面。</li>
                 </ol>
             </section>
 
@@ -177,7 +157,7 @@
                 </a>
                 <a class="shortcut" href="/qrcode.html">
                     <span class="shortcut-title">員工登記</span>
-                    <span class="shortcut-desc">產生一次性 QR Code，讓員工登記手機</span>
+                    <span class="shortcut-desc">為員工產生專屬 QR Code，綁定他的手機</span>
                 </a>
                 <a class="shortcut" href="/attendance.html">
                     <span class="shortcut-title">補打卡</span>

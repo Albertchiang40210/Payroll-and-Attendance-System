@@ -82,9 +82,30 @@
     if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', hideBrokenLogos);
     else hideBrokenLogos();
 
+    // 取得目前位置（需使用者允許）；失敗時丟出可直接顯示給使用者的訊息
+    function getPosition() {
+        return new Promise((resolve, reject) => {
+            if (!navigator.geolocation) {
+                reject(new Error('這支手機的瀏覽器不支援定位。'));
+                return;
+            }
+            navigator.geolocation.getCurrentPosition(
+                (pos) => resolve(pos.coords),
+                (err) => {
+                    reject(new Error(
+                        err.code === 1
+                            ? '沒有取得定位權限。請在瀏覽器或手機設定中允許這個網站使用位置，再試一次。'
+                            : '定位失敗，請到訊號較好的地方（靠窗或戶外）再試一次。'
+                    ));
+                },
+                { enableHighAccuracy: true, timeout: 20000, maximumAge: 0 }
+            );
+        });
+    }
+
     window.HR = {
         getToken, getUser, setSession, clearSession,
         getKioskToken, setKioskToken, clearKioskToken,
-        api, errorText
+        api, errorText, getPosition
     };
 })();

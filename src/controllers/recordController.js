@@ -49,7 +49,9 @@ const present = (a) => ({
     log_in: fmt(a.clock_in, 'HH:mm:ss'),
     log_out: a.clock_out ? fmt(a.clock_out, 'HH:mm:ss') : null,
     manual: a.manual,
-    note: a.note
+    note: a.note,
+    in_distance: a.in_distance,
+    out_distance: a.out_distance
 });
 
 // 某員工某月的紀錄，加上整天沒打卡（休假）的日期

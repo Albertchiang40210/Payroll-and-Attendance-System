@@ -4,7 +4,7 @@ const router = express.Router();
 const kioskController = require('../controllers/kioskController');
 const { protect, restrictTo, kioskProtect } = require('../middlewares/authMiddleware');
 const validateRequest = require('../middlewares/validateRequest');
-const { pairSchema, recordsSchema, kioskClockSchema, createQrSchema } = require('../validations/kioskValidation');
+const { pairSchema, kioskClockSchema, createQrSchema, unbindSchema, locationSchema } = require('../validations/kioskValidation');
 
 // 防止暴力猜通行碼
 const pairLimiter = rateLimit({
@@ -20,15 +20,20 @@ const clockLimiter = rateLimit({
     message: { status: 'fail', message: '操作太頻繁，請稍後再試。' }
 });
 
-// 員工手機
+// 員工手機（只能替綁定的自己打卡）
 router.post('/pair', pairLimiter, validateRequest(pairSchema), kioskController.pair);
-router.get('/employees', kioskProtect, kioskController.listEmployees);
-router.get('/records', kioskProtect, validateRequest(recordsSchema), kioskController.records);
+router.get('/me', kioskProtect, kioskController.me);
+router.get('/records', kioskProtect, kioskController.records);
 router.post('/clock', kioskProtect, clockLimiter, validateRequest(kioskClockSchema), kioskController.clock);
 
 // 老闆後台
 router.get('/qr', protect, restrictTo('ADMIN'), kioskController.getQr);
 router.post('/qr', protect, restrictTo('ADMIN'), validateRequest(createQrSchema), kioskController.createQr);
+router.get('/devices', protect, restrictTo('ADMIN'), kioskController.listDevices);
+router.delete('/devices/:userId', protect, restrictTo('ADMIN'), validateRequest(unbindSchema), kioskController.unbind);
+router.get('/location', protect, restrictTo('ADMIN'), kioskController.getLocation);
+router.put('/location', protect, restrictTo('ADMIN'), validateRequest(locationSchema), kioskController.setLocation);
+router.delete('/location', protect, restrictTo('ADMIN'), kioskController.clearLocation);
 router.post('/revoke-all', protect, restrictTo('ADMIN'), kioskController.revokeAllDevices);
 
 module.exports = router;
