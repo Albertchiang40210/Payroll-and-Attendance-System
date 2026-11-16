@@ -14,6 +14,7 @@ const leaveRoutes = require('./routes/leaveRoutes');
 const shiftRoutes = require('./routes/shiftRoutes');
 const kioskRoutes = require('./routes/kioskRoutes');
 const recordRoutes = require('./routes/recordRoutes');
+const healthRoutes = require('./routes/healthRoutes');
 
 const app = express();
 
@@ -40,6 +41,7 @@ app.use('/api/attendance', attendanceRoutes); // for /today
 app.use('/api/salary', salaryRoutes);
 app.use('/api/leaves', leaveRoutes);
 app.use('/api/shifts', shiftRoutes);
+app.use('/api/health', healthRoutes); // 外部監控用的健康檢查
 app.use('/api/records', recordRoutes); // 老闆補打卡 / 修改紀錄
 app.use('/api/kiosk', kioskRoutes); // 員工手機（選名字打卡）與 QR Code 管理
 

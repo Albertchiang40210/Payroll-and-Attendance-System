@@ -154,3 +154,11 @@ describe('Clock out requires clock in', () => {
         expect(count).toBe(0);
     });
 });
+
+describe('Health check', () => {
+    it('reports ok without requiring a login, and exposes no data', async () => {
+        const res = await request(app).get('/api/health');
+        expect(res.statusCode).toEqual(200);
+        expect(res.body).toEqual({ ok: true });
+    });
+});
