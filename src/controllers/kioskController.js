@@ -135,7 +135,9 @@ exports.clock = catchAsync(async (req, res) => {
 
 const buildQrPayload = (req, row, user) => {
     // 通行碼放在網址的 # 後面：瀏覽器不會把它送到伺服器，也不會留在紀錄裡
-    const url = `${req.protocol}://${req.get('host')}/#c=${row.code}`;
+    // openExternalBrowser=1：從 LINE 點開時，改用手機的瀏覽器（Chrome/Safari）開啟，
+    // 這樣登記資料才會留在平常使用的瀏覽器裡
+    const url = `${req.protocol}://${req.get('host')}/?openExternalBrowser=1#c=${row.code}`;
     const qr = qrcode(0, 'M');
     qr.addData(url);
     qr.make();

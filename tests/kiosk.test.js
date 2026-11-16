@@ -87,7 +87,7 @@ describe('Creating a registration QR code', () => {
         expect(res.body.max_uses).toBe(1);
         expect(res.body.uses).toBe(0);
         expect(res.body.qr_data_url).toMatch(/^data:image\/svg\+xml;base64,/);
-        expect(res.body.url).toMatch(/\/#c=[A-Z2-9]{10}$/);
+        expect(res.body.url).toMatch(/\/\?openExternalBrowser=1#c=[A-Z2-9]{10}$/);
         const minutesLeft = (new Date(res.body.expires_at) - Date.now()) / 60000;
         expect(minutesLeft).toBeGreaterThan(9);
         expect(minutesLeft).toBeLessThanOrEqual(10);

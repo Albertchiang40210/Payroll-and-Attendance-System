@@ -62,6 +62,7 @@
                 <h1>歡迎使用打卡系統</h1>
                 <p class="subtitle">請向店長索取你的專屬登記 QR Code（短時間有效、只能用一次），用手機掃描後，這支手機就只能用來幫你打卡。</p>
 
+                <div id="inapp-warning" class="result error" hidden>你現在是在 LINE 或其他 App 裡面開啟的，登記後只有「這個畫面」能打卡。請按「⋯」選「用瀏覽器開啟」（Chrome 或 Safari）後，再登記一次。</div>
                 <div id="pair-message" class="result" role="status" aria-live="polite" hidden></div>
 
                 <form id="pair-form">
@@ -86,7 +87,7 @@
         <main class="container">
             <div id="kiosk-message" class="result error" role="alert" hidden></div>
             <section class="card" id="kiosk-panel"></section>
-            <footer class="site-foot">車庫小籠包 · 手工現做<br><button type="button" class="link-btn" data-action="show-login">老闆登入</button></footer>
+            <footer class="site-foot">車庫小籠包 · 手工現做<br><button type="button" class="link-btn" data-action="show-login">老闆登入</button><button type="button" class="link-btn" data-action="back-admin" hidden>回老闆後台</button></footer>
         </main>
     </div>
 
@@ -118,6 +119,7 @@
         <header class="topbar">
             <div class="brand"><img class="brand-logo" data-logo src="/img/logo.jpg" alt="" width="32" height="32">車庫小籠包</div>
             <div class="topbar-user">
+                <button id="go-punch" class="btn btn-ghost" type="button" hidden>我的打卡</button>
                 <span id="user-name-display"></span>
                 <button id="logout-btn" class="btn btn-ghost" type="button">登出</button>
             </div>

@@ -225,7 +225,7 @@ async function pairWith(code) {
             HR.setKioskToken(data.token);
             pairCodeInput.value = '';
             setMessage(pairMessage, null);
-            route();
+            showMyPunch(true);
         } else {
             setMessage(pairMessage, HR.errorText(data, '登記失敗，請重新掃描 QR Code。'), 'error');
         }
@@ -249,9 +249,13 @@ window.onKioskExpired = (message) => {
 };
 
 // 已登記的手機：直接顯示「自己」的打卡畫面（沒有名單可選，只能替自己打卡）
-async function showMyPunch() {
+async function showMyPunch(justPaired = false) {
     showView('punch');
     setMessage(kioskMessage, null);
+    // 同一個瀏覽器若也登入了老闆，提供回後台的入口；否則顯示「老闆登入」
+    const adminLoggedIn = !!(HR.getToken() && HR.getUser() && HR.getUser().role === 'ADMIN');
+    document.querySelectorAll('#punch-view [data-action="show-login"]').forEach((el) => (el.hidden = adminLoggedIn));
+    document.querySelectorAll('#punch-view [data-action="back-admin"]').forEach((el) => (el.hidden = !adminLoggedIn));
     document.getElementById('kiosk-panel').replaceChildren();
     try {
         const { res, data } = await HR.api('/kiosk/me', { kiosk: true });
@@ -272,6 +276,9 @@ async function showMyPunch() {
                 })
         });
         panel.refresh();
+        if (justPaired) {
+            setMessage(kioskMessage, `✔ 手機登記完成！${data.name}，之後直接打開這個網址就能打卡。`, 'success');
+        }
     } catch (err) {
         setMessage(kioskMessage, '網路連線失敗，請稍後再試。', 'error');
     }
@@ -455,12 +462,14 @@ document.querySelectorAll('[data-action="show-login"]').forEach((el) =>
         showView('login');
     })
 );
-document.querySelectorAll('[data-action="back"]').forEach((el) => el.addEventListener('click', () => route()));
+document.querySelectorAll('[data-action="back"], [data-action="back-admin"]').forEach((el) => el.addEventListener('click', () => route()));
+document.getElementById('go-punch').addEventListener('click', () => showMyPunch());
 
 function route() {
     const user = HR.getUser();
     if (HR.getToken() && user && user.role === 'ADMIN') {
         userNameDisplay.textContent = `${user.name}（管理員）`;
+        document.getElementById('go-punch').hidden = !HR.getKioskToken();
         showView('dashboard');
         loadDashboard();
     } else if (HR.getKioskToken()) {
@@ -472,11 +481,16 @@ function route() {
 }
 
 // 啟動：若網址帶有 #c=通行碼（掃 QR Code 進來），自動登記這支手機，並立刻把通行碼從網址列清掉
+// 在 LINE、Facebook 等 App 內建的瀏覽器裡，資料和手機的瀏覽器是分開的，先提醒員工
+if (/Line\/|FBAN|FBAV|Instagram|MicroMessenger/i.test(navigator.userAgent)) {
+    document.getElementById('inapp-warning').hidden = false;
+}
+
 (function init() {
     const match = /(?:^|[#&])c=([^&]+)/.exec(location.hash);
     if (match) {
         const code = decodeURIComponent(match[1]);
-        history.replaceState(null, '', location.pathname + location.search);
+        history.replaceState(null, '', location.pathname);
         showView('pair');
         pairWith(code);
     } else {
