@@ -40,13 +40,12 @@
 - **員工手機與位置**：為員工產生登記 QR Code（可用 LINE 傳連結）、查看與解除各員工手機、設定店的位置與允許範圍。
 - **補打卡**：替員工補登、修改、刪除出勤紀錄（不可補未來時間、下班需晚於上班），補登紀錄會標記並可附備註。
 - **休假**：整天沒有任何打卡紀錄的日子**自動列為休假**（只算到昨天、到職日之後、在職員工），顯示於員工紀錄、薪資與當日查詢。
-- **薪資核算**：依月份彙整每位員工工時、休假天數與薪資，附每日明細。一律按「工時 × 時薪」計算，加班與正常班相同，不另加成（可依需求調整）。
+- **薪資核算**：依月份彙整每位員工工時、休假天數與薪資，附每日明細，並可**匯出 Excel（CSV）**。一律按「工時 × 時薪」計算，加班與正常班相同，不另加成（可依需求調整）。
 
 ### 其他
 
 - 請假申請與審核、排班（後端 API 完整，目前沒有前端畫面）。
 - 外部健康監控與自動備份（見 [正式環境部署](#-正式環境部署)）。
-- `POST /api/clock/ai-recognize` 為示意用 stub，會隨機回傳一位員工，**並未實作真實辨識**。
 
 ---
 
@@ -89,7 +88,7 @@ flowchart LR
 | 單純的 API | routes / controllers / middlewares / services / validations 分層；打卡邏輯抽成 `punchService`，登入者與員工手機**共用同一套規則** |
 | 手寫 SQL／直接存取 | Prisma ORM（型別安全、`db push` 自動同步資料表） |
 | 輸入驗證分散 | Zod 在入口統一驗證，錯誤回傳欄位級訊息 |
-| 無自動測試 | Jest + Supertest，**95 個測試**，GitHub Actions 起 MySQL 服務執行 |
+| 無自動測試 | Jest + Supertest，**114 個測試**，GitHub Actions 起 MySQL 服務執行 |
 
 ### 2. 安全強化
 
@@ -141,11 +140,31 @@ V6  定位驗證                            → 人不在店裡也無法打卡
   - 從 LINE 點連結會進**內建瀏覽器**（儲存空間與手機瀏覽器分開）→ 分享連結帶 `openExternalBrowser=1`，並在內建瀏覽器偵測時提示。
   - 已登記的手機再點一次用過的登記連結 → 直接進打卡畫面，不顯示錯誤。
   - 同一瀏覽器同時有老闆登入與手機登記 → 提供互相切換。
+  - 加到主畫面的圖示：`manifest.webmanifest` 刻意設定 `display: browser`（而非 `standalone`）。iPhone 的「獨立 App 模式」儲存空間與 Safari 是分開的，會讓已登記的手機記號消失；維持一般瀏覽器模式只換圖示，登記狀態才不會掉。
 
-### 7. 測試策略
+### 7. 效能、資源與程式碼衛生
 
-- **95 個測試**涵蓋：打卡規則、加班前置、休假計算、補打卡、一次性登記碼（時效、次數、並行搶名額）、手機只能替自己打卡、換手機／解除／停用、定位驗證（過遠、不準、未開定位）、員工刪除保護、健康檢查。
-- **只在獨立資料庫執行**（測試會清空資料表，絕不碰正式資料）。
+最後一輪盤點，逐項**量測**後再修：
+
+| 項目 | 之前 | 之後 |
+| :--- | :--- | :--- |
+| **套件漏洞**（`npm audit`，正式相依） | 13 個（1 嚴重、5 高、7 中） | **0 個**（升級至修正版；移除其實沒在使用的 `swagger-jsdoc`） |
+| **重複打卡** | 只靠程式「先查再寫」，同時送出多個請求理論上可能寫入多筆 | 資料庫**唯一限制**（人＋日期＋班別），並行測試驗證：8 個同時請求只成功 1 個 |
+| **查詢速度** | 出勤、薪資依日期範圍查詢卻沒有索引 | 加上日期索引，資料累積後仍能維持速度 |
+| **資料庫連線** | 11 個檔案各自建立 `PrismaClient`（各一組連線池） | 共用單一實例，並在收到停止訊號時正常關閉連線 |
+| **傳輸大小** | 沒有壓縮 | gzip：`app.js` 21 KB → 6.4 KB、`style.css` 17.8 KB → 4.3 KB（行動網路更快） |
+| **日誌** | 預期內的錯誤（重複打卡、驗證失敗）也記成 error 並附堆疊；日誌存在容器內，重新部署就消失 | 預期內的 4xx 只記一行 warn，5xx 才記 error；日誌寫入磁碟 volume |
+| **Docker 映像** | 707 MB、包含 jest 等測試套件、以 root 執行 | **多階段建置**：593 MB、不含測試套件、以非 root 使用者執行；測試用映像獨立 |
+| **服務狀態** | 只知道「容器有沒有在跑」 | 容器內建健康檢查（`docker ps` 直接顯示 healthy／unhealthy） |
+| **備份指令** | 資料庫密碼放在命令列參數 | 改用環境變數 |
+| **無用的程式** | AI 辨識假功能、只剩測試在用的舊端點 | 移除，縮小攻擊面 |
+
+另外做了**備份還原演練**：建立測試資料 → 備份 → 分別從「本機備份」與「Google Drive 加密備份（下載並解密）」還原到暫時資料庫 → 資料完整，且兩份檔案內容完全一致。
+
+### 8. 測試策略
+
+- **114 個測試**涵蓋：打卡規則與並行重複打卡、加班前置、休假計算、**薪資金額**（四捨五入、加班不加成、未下班與跨月不計、時薪調整）、CSV 匯出、補打卡、一次性登記碼（時效、次數、並行搶名額）、手機只能替自己打卡、換手機／解除／停用、定位驗證（過遠、不準、未開定位）、員工刪除保護、健康檢查。
+- **只在獨立資料庫執行**：`scripts/test.sh` 會建立暫時資料庫、以測試用映像執行、結束後自動刪除，絕不碰正式資料。
 - 前端以**實際執行頁面的 JavaScript**（jsdom）驗證各身分的畫面，而不是只看伺服器回 200：曾因移除一個畫面元素卻漏改程式導致整頁空白，這類錯誤只有真的執行頁面才抓得到。
 
 ---
@@ -214,6 +233,8 @@ ADMIN_PASSWORD='你的密碼' npm run seed
 npm run dev                        # http://localhost:3001
 ```
 
+> **關於資料表結構的更新**：容器啟動時會執行 `prisma db push`，**不帶** `--accept-data-loss`。因此當結構變更可能影響既有資料（例如新增唯一限制），Prisma 會拒絕並讓容器啟動失敗，這是刻意的保護：請先確認資料沒有問題，再手動套用該變更。
+
 ### 環境變數
 
 | 變數 | 說明 |
@@ -261,7 +282,7 @@ sudo tailscale funnel --bg 3001         # 把本機 3001 公開成 HTTPS 網址
 
 雲端加密建議使用 rclone 的 `crypt`，並只授權 `drive.file`（最小權限）。**請妥善保存 rclone 設定檔，加密密碼遺失就無法還原雲端備份。**
 
-還原備份（建議定期演練）：
+還原備份（已實際演練過，建議定期再做）：
 
 ```bash
 gunzip -c ~/backups/punch_db_XXXX.sql.gz | docker exec -i punch_mysql sh -c 'mysql -uroot -p"$MYSQL_ROOT_PASSWORD" punch_db'
@@ -288,21 +309,25 @@ gunzip -c ~/backups/punch_db_XXXX.sql.gz | docker exec -i punch_mysql sh -c 'mys
 
 ## 🧪 測試
 
-測試會**清空所連線資料庫的資料表**，請務必指向獨立的測試資料庫，切勿使用正式資料。
+測試會**清空所連線資料庫的資料表**，所以請一律使用腳本，它會在 MySQL 容器裡建立暫時資料庫（`punch_test`）、以獨立的測試映像執行，結束後自動刪除，**不會碰到正式資料**：
 
 ```bash
-DATABASE_URL="mysql://root:<密碼>@localhost:3311/punch_test" JWT_SECRET=test npx prisma db push
-DATABASE_URL="mysql://root:<密碼>@localhost:3311/punch_test" JWT_SECRET=test npm test
+scripts/test.sh
 ```
 
-測試設定為依序執行（`--runInBand`），共 **95 個**：
+> 不使用 Docker 時，也可自行指向獨立資料庫：
+> `DATABASE_URL="mysql://root:<密碼>@localhost:3311/punch_test" JWT_SECRET=test npx prisma db push && npm test`（請務必確認不是正式資料庫）
+
+測試設定為依序執行（`--runInBand`），共 **114 個**：
 
 | 檔案 | 數量 | 涵蓋 |
 | :--- | :---: | :--- |
 | `tests/kiosk.test.js` | 50 | 一次性登記碼（時效、次數、並行搶名額）、手機只能替自己打卡、換手機／解除／停用、定位驗證、管理員也打卡、員工刪除保護 |
-| `tests/records.test.js` | 19 | 補打卡的權限、驗證、新增／修改／刪除與休假連動 |
-| `tests/attendance.test.js` | 13 | 基本打卡流程、加班前置、下班需有上班、健康檢查 |
+| `tests/records.test.js` | 20 | 補打卡的權限、驗證、新增／修改／刪除與休假連動、並行補登 |
+| `tests/attendance.test.js` | 15 | 基本打卡流程、加班前置、下班需有上班、並行重複打卡、資料庫唯一限制、健康檢查 |
 | `tests/dayoff.test.js` | 13 | 休假計算（到職日、今天、離職）、薪資休假天數、指定日期查詢 |
+| `tests/salary.test.js` | 10 | 薪資金額：四捨五入、加班不加成、未下班與跨月不計、補登標記、時薪調整、時薪 0 |
+| `tests/csv.test.js` | 6 | Excel 匯出（BOM、跳脫、防止試算表公式注入） |
 
 ---
 
@@ -361,11 +386,11 @@ src/
   middlewares/              JWT / 裝置驗證、角色限制、Zod 驗證、錯誤處理
   validations/              Zod schema
   config/swagger.js         OpenAPI 文件
-  utils/                    logger、catchAsync
+  utils/                    logger、catchAsync、prisma（共用的資料庫連線）
 prisma/                     schema.prisma、seed.js
-public/                     前端頁面（index、employees、qrcode、attendance、boss）、css、js、img
-scripts/                    backup.sh（備份）、healthcheck.sh（健康監控）
-tests/                      Jest + Supertest（4 個檔案、95 個測試）
+public/                     前端頁面（index、employees、qrcode、attendance、boss）、css、js（含 csv.js）、img（店標與主畫面圖示）、manifest
+scripts/                    backup.sh（備份）、healthcheck.sh（健康監控）、test.sh（在暫時資料庫跑全部測試）
+tests/                      Jest + Supertest（6 個檔案、114 個測試）
 .github/workflows/          CI
 ```
 
@@ -379,7 +404,6 @@ tests/                      Jest + Supertest（4 個檔案、95 個測試）
 - **跨午夜的班次**（例如 23:00 上班、隔日 01:00 下班）無法正確配對下班打卡。
 - 薪資為單純「工時 × 時薪」：不含加班加成、週工時上限、休息時間扣除、例假日／國定假日加成；時薪使用浮點數、金額四捨五入至整數，若用於正式帳務建議改用 `Decimal`。
 - 請假與排班只有後端 API、尚無前端畫面；Swagger 文件僅涵蓋部分端點。
-- 薪資計算尚缺獨立的單元測試（目前由 API 層測試間接覆蓋）。
 - 沒有主動推播通知（例如未打卡提醒）。
 
 ---
