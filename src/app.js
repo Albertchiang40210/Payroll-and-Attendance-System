@@ -12,6 +12,7 @@ const attendanceRoutes = require('./routes/attendanceRoutes');
 const salaryRoutes = require('./routes/salaryRoutes');
 const leaveRoutes = require('./routes/leaveRoutes');
 const shiftRoutes = require('./routes/shiftRoutes');
+const kioskRoutes = require('./routes/kioskRoutes');
 
 const app = express();
 
@@ -38,6 +39,7 @@ app.use('/api/attendance', attendanceRoutes); // for /today
 app.use('/api/salary', salaryRoutes);
 app.use('/api/leaves', leaveRoutes);
 app.use('/api/shifts', shiftRoutes);
+app.use('/api/kiosk', kioskRoutes); // 員工手機（選名字打卡）與 QR Code 管理
 
 // 404 Handler
 app.use((req, res, next) => {

@@ -1,311 +1,620 @@
+/* 淺色簡潔風：高對比、大按鈕，適合手機在店內單手操作 */
 :root {
-    --primary-color: #6366f1;
-    --primary-hover: #4f46e5;
-    --bg-color: #0f172a;
-    --text-color: #f8fafc;
-    --text-muted: #94a3b8;
-    --glass-bg: rgba(255, 255, 255, 0.05);
-    --glass-border: rgba(255, 255, 255, 0.1);
-    --danger-color: #ef4444;
-    --success-color: #10b981;
+    --bg: #f5f6f8;
+    --surface: #ffffff;
+    --text: #1c1f23;
+    --muted: #5b6470;
+    --border: #dfe3e8;
+    --primary: #0f766e;
+    --primary-dark: #0b5f58;
+    --primary-soft: #e6f4f2;
+    --out: #9a3412;
+    --out-dark: #7c2a0e;
+    --danger: #b91c1c;
+    --danger-soft: #fdecec;
+    --success: #166534;
+    --success-soft: #e8f5ec;
+    --radius: 14px;
+    --shadow: 0 1px 3px rgba(16, 24, 40, 0.08);
 }
 
 * {
     box-sizing: border-box;
     margin: 0;
     padding: 0;
-    font-family: 'Inter', sans-serif;
 }
 
-body {
-    background-color: var(--bg-color);
-    color: var(--text-color);
-    min-height: 100vh;
-    overflow-x: hidden;
-    position: relative;
-}
-
-/* Background animated shapes */
-.background-shapes {
-    position: fixed;
-    top: 0;
-    left: 0;
-    width: 100vw;
-    height: 100vh;
-    z-index: -1;
-    overflow: hidden;
-}
-
-.shape {
-    position: absolute;
-    filter: blur(80px);
-    border-radius: 50%;
-    animation: float 20s infinite alternate;
-}
-
-.shape-1 {
-    width: 400px;
-    height: 400px;
-    background: rgba(99, 102, 241, 0.3);
-    top: -100px;
-    left: -100px;
-}
-
-.shape-2 {
-    width: 500px;
-    height: 500px;
-    background: rgba(16, 185, 129, 0.2);
-    bottom: -200px;
-    right: -100px;
-    animation-delay: -5s;
-}
-
-.shape-3 {
-    width: 300px;
-    height: 300px;
-    background: rgba(236, 72, 153, 0.2);
-    top: 40%;
-    left: 50%;
-    animation-delay: -10s;
-}
-
-@keyframes float {
-    0% { transform: translate(0, 0) rotate(0deg); }
-    100% { transform: translate(100px, 50px) rotate(180deg); }
-}
-
-/* Glassmorphism Utilities */
-.glass-card {
-    background: var(--glass-bg);
-    backdrop-filter: blur(16px);
-    -webkit-backdrop-filter: blur(16px);
-    border: 1px solid var(--glass-border);
-    border-radius: 24px;
-    padding: 2.5rem;
-    box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
-}
-
-.glass-nav {
-    background: rgba(15, 23, 42, 0.7);
-    backdrop-filter: blur(16px);
-    -webkit-backdrop-filter: blur(16px);
-    border-bottom: 1px solid var(--glass-border);
-    padding: 1rem 2rem;
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    position: sticky;
-    top: 0;
-    z-index: 10;
-}
-
-/* Views */
-.view {
-    display: none;
-    opacity: 0;
-    transition: opacity 0.5s ease;
-}
-
-.view.active {
-    display: flex;
-    opacity: 1;
-}
-
-#login-view {
-    min-height: 100vh;
-    align-items: center;
-    justify-content: center;
-}
-
-.login-card {
-    width: 100%;
-    max-width: 420px;
-    text-align: center;
-    transform: translateY(20px);
-    animation: slideUp 0.6s ease forwards;
-}
-
-@keyframes slideUp {
-    to { transform: translateY(0); }
-}
-
-.logo {
-    font-size: 3rem;
-    margin-bottom: 1rem;
-}
-
-.login-card h1 {
-    font-size: 1.8rem;
-    margin-bottom: 0.5rem;
-}
-
-.login-card p {
-    color: var(--text-muted);
-    margin-bottom: 2rem;
-}
-
-/* Forms */
-.input-group {
-    margin-bottom: 1.5rem;
-    text-align: left;
-}
-
-.input-group label {
-    display: block;
-    margin-bottom: 0.5rem;
-    font-size: 0.9rem;
-    font-weight: 500;
-}
-
-input {
-    width: 100%;
-    padding: 0.8rem 1rem;
-    background: rgba(0, 0, 0, 0.2);
-    border: 1px solid var(--glass-border);
-    border-radius: 12px;
-    color: var(--text-color);
-    font-size: 1rem;
-    outline: none;
-    transition: all 0.3s ease;
-}
-
-input:focus {
-    border-color: var(--primary-color);
-    box-shadow: 0 0 0 2px rgba(99, 102, 241, 0.2);
-}
-
-/* Buttons */
-button {
-    cursor: pointer;
-    font-family: inherit;
-    transition: all 0.3s ease;
-}
-
-.btn-primary {
-    width: 100%;
-    padding: 0.8rem;
-    background: var(--primary-color);
-    color: white;
-    border: none;
-    border-radius: 12px;
-    font-size: 1rem;
-    font-weight: 600;
-}
-
-.btn-primary:hover {
-    background: var(--primary-hover);
-    transform: translateY(-2px);
-}
-
-.btn-outline {
-    background: transparent;
-    border: 1px solid var(--glass-border);
-    color: var(--text-color);
-    padding: 0.5rem 1rem;
-    border-radius: 8px;
-}
-
-.btn-outline:hover {
-    background: rgba(255, 255, 255, 0.1);
-}
-
-/* Dashboard */
-#dashboard-view {
-    flex-direction: column;
-}
-
-.dashboard-container {
-    max-width: 1000px;
-    margin: 2rem auto;
-    padding: 0 1rem;
-    width: 100%;
-}
-
-.dashboard-card {
-    margin-bottom: 2rem;
-}
-
-.dashboard-card h2 {
-    margin-bottom: 1.5rem;
-    font-size: 1.5rem;
-    border-bottom: 1px solid var(--glass-border);
-    padding-bottom: 0.8rem;
-}
-
-.clock-actions {
-    display: flex;
-    gap: 1rem;
-    margin-bottom: 1.5rem;
-}
-
-.btn-large {
-    flex: 1;
-    padding: 1.5rem;
-    font-size: 1.2rem;
-    border-radius: 16px;
-}
-
-.btn-secondary {
-    background: rgba(255, 255, 255, 0.1);
-    color: var(--text-color);
-    border: 1px solid var(--glass-border);
-}
-
-.btn-secondary:hover {
-    background: rgba(255, 255, 255, 0.15);
-}
-
-.ai-recognition {
-    text-align: center;
-    margin-top: 2rem;
-    padding-top: 1.5rem;
-    border-top: 1px dashed var(--glass-border);
-}
-
-.hidden {
+[hidden] {
     display: none !important;
 }
 
-/* Table */
-.table-container {
-    overflow-x: auto;
+body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Noto Sans TC", "PingFang TC",
+        "Microsoft JhengHei", sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    min-height: 100vh;
+    font-size: 16px;
+    line-height: 1.6;
+    -webkit-text-size-adjust: 100%;
 }
 
-.glass-table {
+:focus-visible {
+    outline: 3px solid #2563eb;
+    outline-offset: 2px;
+}
+
+/* ---------- 頂部列 ---------- */
+.topbar {
+    position: sticky;
+    top: 0;
+    z-index: 10;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    padding: 12px 16px;
+    background: var(--surface);
+    border-bottom: 1px solid var(--border);
+}
+
+.brand {
+    font-weight: 700;
+    font-size: 18px;
+}
+
+.topbar-user {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-size: 14px;
+    color: var(--muted);
+    min-width: 0;
+}
+
+.topbar-user span {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+/* ---------- 版面 ---------- */
+.container {
+    width: 100%;
+    max-width: 640px;
+    margin: 0 auto;
+    padding: 16px;
+    display: grid;
+    gap: 16px;
+}
+
+.container.wide {
+    max-width: 900px;
+}
+
+.card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    box-shadow: var(--shadow);
+    padding: 20px;
+}
+
+.card h1,
+.card h2 {
+    font-size: 20px;
+    margin-bottom: 4px;
+}
+
+.subtitle {
+    color: var(--muted);
+    font-size: 14px;
+    margin-bottom: 16px;
+}
+
+/* ---------- 登入 ---------- */
+.login-wrap {
+    max-width: 420px;
+    margin: 0 auto;
+    padding: 40px 16px;
+}
+
+.login-card h1 {
+    font-size: 24px;
+    margin-bottom: 4px;
+}
+
+.field {
+    display: grid;
+    gap: 6px;
+    margin-bottom: 14px;
+}
+
+.field label {
+    font-weight: 600;
+    font-size: 15px;
+}
+
+input[type="text"],
+input[type="password"],
+input[type="month"] {
+    width: 100%;
+    min-height: 48px;
+    padding: 10px 12px;
+    font-size: 16px; /* 16px 以上，iOS 才不會自動放大畫面 */
+    font-family: inherit;
+    color: var(--text);
+    background: #fff;
+    border: 1.5px solid #b8bfc8;
+    border-radius: 10px;
+}
+
+input:focus {
+    border-color: var(--primary);
+}
+
+/* ---------- 按鈕 ---------- */
+.btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    min-height: 48px;
+    padding: 10px 18px;
+    font-size: 16px;
+    font-weight: 600;
+    font-family: inherit;
+    border: 1.5px solid transparent;
+    border-radius: 10px;
+    cursor: pointer;
+    text-decoration: none;
+    transition: background-color 0.15s;
+}
+
+.btn:disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
+}
+
+.btn-block {
+    width: 100%;
+}
+
+.btn-primary {
+    background: var(--primary);
+    color: #fff;
+}
+.btn-primary:hover:not(:disabled) {
+    background: var(--primary-dark);
+}
+
+.btn-out {
+    background: var(--out);
+    color: #fff;
+}
+.btn-out:hover:not(:disabled) {
+    background: var(--out-dark);
+}
+
+.btn-ghost {
+    background: #fff;
+    color: var(--text);
+    border-color: #b8bfc8;
+    min-height: 40px;
+    padding: 6px 14px;
+    font-size: 14px;
+}
+.btn-ghost:hover {
+    background: var(--bg);
+}
+
+/* 加班按鈕：白底色框，和正常班的實心按鈕區分 */
+.btn-ot-in {
+    background: #fff;
+    color: var(--primary-dark);
+    border-color: var(--primary);
+}
+.btn-ot-in:hover:not(:disabled) {
+    background: var(--primary-soft);
+}
+
+.btn-ot-out {
+    background: #fff;
+    color: var(--out);
+    border-color: var(--out);
+}
+.btn-ot-out:hover:not(:disabled) {
+    background: #fbeee8;
+}
+
+/* ---------- 打卡 ---------- */
+.now {
+    text-align: center;
+    padding: 8px 0 20px;
+}
+
+.now-date {
+    color: var(--muted);
+    font-size: 15px;
+}
+
+.now-time {
+    font-size: 52px;
+    font-weight: 700;
+    font-variant-numeric: tabular-nums;
+    line-height: 1.2;
+    letter-spacing: 1px;
+}
+
+.clock-actions {
+    display: grid;
+    gap: 12px;
+}
+
+.clock-btn {
+    min-height: 72px;
+    font-size: 22px;
+    border-radius: 14px;
+}
+
+.btn-ot-in.clock-btn,
+.btn-ot-out.clock-btn {
+    min-height: 60px;
+    font-size: 19px;
+}
+
+.result {
+    margin-top: 16px;
+    padding: 14px 16px;
+    border-radius: 12px;
+    font-size: 17px;
+    font-weight: 600;
+    white-space: pre-line; /* 伺服器訊息含換行 */
+}
+
+.result.success {
+    background: var(--success-soft);
+    color: var(--success);
+    border: 1px solid #b7dfc3;
+}
+
+.result.error {
+    background: var(--danger-soft);
+    color: var(--danger);
+    border: 1px solid #f3c1c1;
+}
+
+/* ---------- 表格 ---------- */
+.card-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    margin-bottom: 12px;
+    flex-wrap: wrap;
+}
+
+.table-wrap {
+    overflow-x: auto;
+    border: 1px solid var(--border);
+    border-radius: 10px;
+}
+
+table {
     width: 100%;
     border-collapse: collapse;
+    font-size: 15px;
+    min-width: 420px;
 }
 
-.glass-table th, .glass-table td {
-    padding: 1rem;
+th,
+td {
+    padding: 10px 12px;
     text-align: left;
-    border-bottom: 1px solid var(--glass-border);
+    border-bottom: 1px solid var(--border);
+    white-space: nowrap;
 }
 
-.glass-table th {
+th {
+    background: var(--bg);
     font-weight: 600;
-    color: var(--text-muted);
+    color: var(--muted);
+    font-size: 14px;
 }
 
-/* Toast Notification */
-.toast {
-    position: fixed;
-    top: 20px;
-    right: 20px;
-    padding: 1rem 1.5rem;
-    background: var(--glass-bg);
-    backdrop-filter: blur(16px);
-    border: 1px solid var(--glass-border);
+tbody tr:last-child td {
+    border-bottom: none;
+}
+
+td.num,
+th.num {
+    text-align: right;
+    font-variant-numeric: tabular-nums;
+}
+
+tfoot td {
+    font-weight: 700;
+    background: var(--primary-soft);
+}
+
+.empty {
+    text-align: center;
+    color: var(--muted);
+    padding: 24px 12px;
+}
+
+.tag {
+    display: inline-block;
+    padding: 2px 10px;
+    font-size: 13px;
+    font-weight: 600;
+    border-radius: 999px;
+    background: var(--primary-soft);
+    color: var(--primary-dark);
+}
+
+/* ---------- 薪資頁 ---------- */
+.toolbar {
+    display: flex;
+    align-items: flex-end;
+    gap: 12px;
+    flex-wrap: wrap;
+}
+
+.toolbar .field {
+    margin-bottom: 0;
+    flex: 1 1 180px;
+}
+
+.toolbar .btn {
+    flex: 0 0 auto;
+}
+
+.salary {
+    color: var(--out);
+    font-weight: 700;
+}
+
+details {
+    margin-top: 12px;
+}
+
+summary {
+    cursor: pointer;
+    font-weight: 600;
+    padding: 10px 0;
+}
+
+/* ---------- 表單 ---------- */
+.form-grid {
+    display: grid;
+    gap: 0 16px;
+}
+
+.form-actions {
+    display: flex;
+    gap: 10px;
+    margin-top: 4px;
+}
+
+.hint {
+    font-size: 13px;
+    color: var(--muted);
+}
+
+select {
+    width: 100%;
+    min-height: 48px;
+    padding: 10px 12px;
+    font-size: 16px;
+    font-family: inherit;
+    color: var(--text);
+    background: #fff;
+    border: 1.5px solid #b8bfc8;
+    border-radius: 10px;
+}
+
+input[type="number"] {
+    width: 100%;
+    min-height: 48px;
+    padding: 10px 12px;
+    font-size: 16px;
+    font-family: inherit;
+    color: var(--text);
+    background: #fff;
+    border: 1.5px solid #b8bfc8;
+    border-radius: 10px;
+}
+
+.btn-row {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+}
+
+/* ---------- 員工選名字 / 打卡紀錄 ---------- */
+.center {
+    text-align: center;
+    margin-bottom: 12px;
+}
+
+.name-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 12px;
+}
+
+.btn-name {
+    min-height: 72px;
+    font-size: 22px;
+    background: #fff;
+    color: var(--text);
+    border: 2px solid var(--primary);
+    border-radius: 14px;
+    word-break: break-all;
+}
+.btn-name:hover {
+    background: var(--primary-soft);
+}
+
+.link-row {
+    margin-top: 18px;
+    text-align: center;
+}
+
+.link-btn {
+    background: none;
+    border: none;
+    color: var(--primary-dark);
+    font-size: 15px;
+    font-family: inherit;
+    text-decoration: underline;
+    cursor: pointer;
+    padding: 8px;
+}
+
+.status-line {
+    white-space: pre-line;
+    text-align: center;
+    font-size: 17px;
+    font-weight: 600;
+    padding: 12px 14px;
+    margin-bottom: 16px;
     border-radius: 12px;
-    color: white;
-    z-index: 1000;
-    transform: translateX(150%);
-    transition: transform 0.3s cubic-bezier(0.68, -0.55, 0.265, 1.55);
+    background: var(--bg);
+    color: var(--muted);
+}
+.status-line.working {
+    background: #fff4e5;
+    color: var(--out);
+}
+.status-line.done {
+    background: var(--success-soft);
+    color: var(--success);
 }
 
-.toast.show {
-    transform: translateX(0);
+.overtime {
+    margin-top: 20px;
+    padding-top: 16px;
+    border-top: 1px dashed var(--border);
 }
 
-.toast.success { border-left: 4px solid var(--success-color); }
-.toast.error { border-left: 4px solid var(--danger-color); }
+.overtime h3,
+.records-title {
+    font-size: 17px;
+    margin-bottom: 4px;
+}
+
+.records-title {
+    margin: 24px 0 8px;
+}
+
+.overtime .clock-actions {
+    margin-top: 10px;
+}
+
+.records-table {
+    min-width: 0;
+}
+
+.records-table .today-row td {
+    background: var(--primary-soft);
+    font-weight: 600;
+}
+
+.records-table .pending {
+    color: var(--out);
+    font-weight: 600;
+}
+
+.tag-ot {
+    background: #fbeee8;
+    color: var(--out);
+}
+
+.btn-ot-in.clock-btn,
+.btn-ot-out.clock-btn {
+    min-height: 60px;
+    font-size: 19px;
+}
+
+/* ---------- QR Code ---------- */
+.qr-box {
+    text-align: center;
+}
+
+.qr-box img {
+    width: min(320px, 100%);
+    height: auto;
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 8px;
+    background: #fff;
+}
+
+.qr-code-text {
+    margin: 8px 0 4px;
+    font-size: 20px;
+    font-weight: 700;
+    letter-spacing: 3px;
+    font-family: ui-monospace, "SFMono-Regular", Menlo, Consolas, monospace;
+}
+
+.qr-note {
+    color: var(--muted);
+    font-size: 14px;
+    margin-bottom: 12px;
+}
+
+.print-only {
+    display: none;
+}
+
+@media print {
+    body * {
+        visibility: hidden;
+    }
+    #qr-print,
+    #qr-print * {
+        visibility: visible;
+    }
+    #qr-print {
+        position: absolute;
+        left: 0;
+        top: 0;
+        width: 100%;
+        text-align: center;
+    }
+    #qr-print .print-only {
+        display: block;
+        font-size: 28px;
+        font-weight: 700;
+        margin-bottom: 16px;
+    }
+    #qr-print img {
+        width: 380px;
+        border: none;
+    }
+    #qr-print .no-print {
+        display: none;
+    }
+}
+
+/* ---------- 桌面版微調 ---------- */
+@media (min-width: 560px) {
+    .name-grid {
+        grid-template-columns: repeat(3, 1fr);
+    }
+    .form-grid {
+        grid-template-columns: 1fr 1fr;
+    }
+    .form-actions {
+        grid-column: 1 / -1;
+    }
+    .clock-actions {
+        grid-template-columns: 1fr 1fr;
+    }
+    .now-time {
+        font-size: 64px;
+    }
+}

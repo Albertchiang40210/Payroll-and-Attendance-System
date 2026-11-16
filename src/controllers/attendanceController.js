@@ -4,67 +4,27 @@ const catchAsync = require('../utils/catchAsync');
 const dayjs = require('dayjs');
 const utc = require('dayjs/plugin/utc');
 const timezone = require('dayjs/plugin/timezone');
+const { performPunch, getTodayRecords, getRecentRecords, getTaipeiTime } = require('../services/punchService');
 
 dayjs.extend(utc);
 dayjs.extend(timezone);
 
-const getTaipeiTime = () => dayjs().tz('Asia/Taipei');
-
 exports.clockInOut = catchAsync(async (req, res) => {
-    // req.user is set by authMiddleware
-    const userId = req.user.id;
-    const { type, punch_type } = req.body; 
-    const currentPunchType = punch_type || '正常'; 
-
-    const now = getTaipeiTime();
-    const today = now.format('YYYY-MM-DD');
-    const timeString = now.format('HH:mm:ss');
-
-    const attendances = await prisma.attendance.findMany({
-        where: {
-            userId: userId,
-            work_date: today,
-            punch_type: currentPunchType
-        }
+    const { type, punch_type } = req.body;
+    const result = await performPunch({
+        userId: req.user.id,
+        type,
+        punchType: punch_type || '正常'
     });
-    
-    const todaysRecord = attendances[0];
+    res.json({ status: 'success', time: result.time, message: result.message });
+});
 
-    if (type === 'in') {
-        if (todaysRecord) {
-            const error = new Error(`❌ 您今天已經打過【${currentPunchType}】上班卡囉！`);
-            error.statusCode = 400;
-            throw error;
-        }
-        
-        await prisma.attendance.create({
-            data: {
-                userId: userId,
-                work_date: today,
-                punch_type: currentPunchType,
-                clock_in: now.toDate()
-            }
-        });
-        return res.json({ status: 'success', time: timeString, message: `☀️ 【${currentPunchType}】上班打卡成功！\n時間：${timeString}` });
-    
-    } else if (type === 'out') {
-        if (!todaysRecord) {
-            const error = new Error(`❌ 您今日尚未有【${currentPunchType}】上班打卡紀錄，請先打上班卡！`);
-            error.statusCode = 400;
-            throw error;
-        }
-        if (todaysRecord.clock_out !== null) {
-            const error = new Error(`❌ 您今天已經打過【${currentPunchType}】下班卡囉！`);
-            error.statusCode = 400;
-            throw error;
-        }
-        
-        await prisma.attendance.update({
-            where: { id: todaysRecord.id },
-            data: { clock_out: now.toDate() }
-        });
-        return res.json({ status: 'success', time: timeString, message: `🌙 【${currentPunchType}】下班打卡成功！\n時間：${timeString}` });
-    }
+exports.getMyToday = catchAsync(async (req, res) => {
+    res.json(await getTodayRecords(req.user.id));
+});
+
+exports.getMyRecords = catchAsync(async (req, res) => {
+    res.json(await getRecentRecords(req.user.id, 14));
 });
 
 exports.getTodayAttendance = catchAsync(async (req, res) => {

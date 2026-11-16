@@ -3,86 +3,164 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>點心專賣店 - 人資系統</title>
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <meta name="theme-color" content="#ffffff">
+    <meta name="referrer" content="no-referrer">
+    <title>點心專賣店 - 打卡系統</title>
     <link rel="stylesheet" href="/css/style.css">
 </head>
 <body>
-    <div id="toast" class="toast"></div>
+    <!-- 打卡面板（員工選名字後使用） -->
+    <template id="clock-panel-tpl">
+        <div class="now">
+            <div class="now-date"></div>
+            <div class="now-time">--:--:--</div>
+        </div>
 
-    <div class="background-shapes">
-        <div class="shape shape-1"></div>
-        <div class="shape shape-2"></div>
-        <div class="shape shape-3"></div>
-    </div>
+        <div class="status-line" role="status" aria-live="polite"></div>
 
-    <!-- Login View -->
-    <div id="login-view" class="view active">
-        <div class="glass-card login-card">
-            <div class="logo">🥟</div>
-            <h1>登入系統</h1>
-            <p>歡迎回到點心專賣店人資管理</p>
-            <form id="login-form">
-                <div class="input-group">
-                    <label for="username">帳號</label>
-                    <input type="text" id="username" required placeholder="請輸入帳號 (預設: admin)">
-                </div>
-                <div class="input-group">
-                    <label for="password">密碼</label>
-                    <input type="password" id="password" required placeholder="請輸入密碼 (預設: admin123)">
-                </div>
-                <button type="submit" class="btn-primary">登入</button>
-            </form>
+        <div class="clock-actions">
+            <button class="btn btn-primary clock-btn" data-type="in" type="button">上班打卡</button>
+            <button class="btn btn-out clock-btn" data-type="out" type="button">下班打卡</button>
+        </div>
+
+        <div class="panel-result result" role="status" aria-live="polite" hidden></div>
+
+        <div class="overtime">
+            <h3>加班打卡</h3>
+            <p class="hint">已經下班、臨時被叫回來時使用。要先完成今天的上班與下班打卡才能按。</p>
+            <div class="clock-actions">
+                <button class="btn btn-ot-in clock-btn" data-type="in" data-punch="加班" type="button">加班上班</button>
+                <button class="btn btn-ot-out clock-btn" data-type="out" data-punch="加班" type="button">加班下班</button>
+            </div>
+        </div>
+
+        <h3 class="records-title">打卡紀錄（最近 14 天）</h3>
+        <div class="table-wrap">
+            <table class="records-table">
+                <thead>
+                    <tr><th>日期</th><th>類型</th><th>上班</th><th>下班</th></tr>
+                </thead>
+                <tbody></tbody>
+            </table>
+        </div>
+    </template>
+
+    <!-- 1. 尚未登記的手機：請掃 QR Code -->
+    <div id="pair-view" hidden>
+        <div class="login-wrap">
+            <div class="card">
+                <h1>點心專賣店打卡</h1>
+                <p class="subtitle">請向店長索取打卡 QR Code，用手機掃描後即可打卡。</p>
+
+                <div id="pair-message" class="result" role="status" aria-live="polite" hidden></div>
+
+                <form id="pair-form">
+                    <div class="field">
+                        <label for="pair-code">掃不到嗎？手動輸入通行碼</label>
+                        <input type="text" id="pair-code" autocomplete="off" autocapitalize="characters" spellcheck="false">
+                    </div>
+                    <button type="submit" id="pair-btn" class="btn btn-primary btn-block">確認</button>
+                </form>
+
+                <p class="link-row"><button type="button" class="link-btn" data-action="show-login">老闆登入</button></p>
+            </div>
         </div>
     </div>
 
-    <!-- Dashboard View -->
-    <div id="dashboard-view" class="view">
-        <nav class="glass-nav">
-            <div class="nav-brand">🥟 點心專賣店 HR</div>
-            <div class="nav-user">
-                <span id="user-name-display">使用者</span>
-                <button id="logout-btn" class="btn-outline">登出</button>
-            </div>
-        </nav>
-
-        <main class="dashboard-container">
-            <!-- Clock Action Card -->
-            <section class="glass-card dashboard-card">
-                <h2>📍 今日打卡</h2>
-                <div class="clock-actions">
-                    <button class="btn-primary btn-large clock-btn" data-type="in">☀️ 上班打卡</button>
-                    <button class="btn-secondary btn-large clock-btn" data-type="out">🌙 下班打卡</button>
+    <!-- 2. 已登記的手機：選名字 -->
+    <div id="kiosk-view" hidden>
+        <header class="topbar">
+            <div class="brand">點心專賣店</div>
+            <button type="button" class="link-btn" data-action="show-login">老闆登入</button>
+        </header>
+        <main class="container">
+            <section class="card">
+                <div class="now">
+                    <div class="now-date"></div>
+                    <div class="now-time">--:--:--</div>
                 </div>
-                <div class="ai-recognition">
-                    <button id="ai-recognize-btn" class="btn-outline">🤖 啟動 AI 視覺打卡 (測試)</button>
-                </div>
+                <h2 class="center">請選擇你的名字</h2>
+                <div id="kiosk-message" class="result error" role="alert" hidden></div>
+                <div id="name-grid" class="name-grid"></div>
             </section>
+        </main>
+    </div>
 
-            <!-- Admin Only: Today's Attendance -->
-            <section id="admin-section" class="glass-card dashboard-card hidden">
-                <h2>📋 今日出勤總覽 (老闆專用)</h2>
-                <div class="table-container">
-                    <table class="glass-table">
+    <!-- 3. 選好名字後的打卡畫面 -->
+    <div id="punch-view" hidden>
+        <header class="topbar">
+            <button type="button" id="punch-back" class="btn btn-ghost">← 換人</button>
+            <div class="brand" id="punch-name"></div>
+            <span></span>
+        </header>
+        <main class="container">
+            <section class="card" id="kiosk-panel"></section>
+        </main>
+    </div>
+
+    <!-- 老闆登入 -->
+    <div id="login-view" hidden>
+        <div class="login-wrap">
+            <div class="card login-card">
+                <h1>老闆登入</h1>
+                <p class="subtitle">管理員專用</p>
+                <form id="login-form">
+                    <div class="field">
+                        <label for="username">帳號</label>
+                        <input type="text" id="username" autocomplete="username" autocapitalize="none" required>
+                    </div>
+                    <div class="field">
+                        <label for="password">密碼</label>
+                        <input type="password" id="password" autocomplete="current-password" required>
+                    </div>
+                    <button type="submit" id="login-btn" class="btn btn-primary btn-block">登入</button>
+                    <div id="login-error" class="result error" role="alert" hidden></div>
+                </form>
+                <p class="link-row"><button type="button" class="link-btn" data-action="back">← 返回打卡畫面</button></p>
+            </div>
+        </div>
+    </div>
+
+    <!-- 老闆主畫面 -->
+    <div id="dashboard-view" hidden>
+        <header class="topbar">
+            <div class="brand">點心專賣店</div>
+            <div class="topbar-user">
+                <span id="user-name-display"></span>
+                <button id="logout-btn" class="btn btn-ghost" type="button">登出</button>
+            </div>
+        </header>
+
+        <main class="container">
+            <section class="card">
+                <div class="card-head">
+                    <div>
+                        <h2>今日出勤</h2>
+                        <p class="subtitle">老闆專用</p>
+                    </div>
+                    <div class="btn-row">
+                        <a class="btn btn-primary" href="/employees.html">員工管理</a>
+                        <a class="btn btn-primary" href="/boss.html">薪資核算</a>
+                    </div>
+                </div>
+                <div class="table-wrap">
+                    <table>
                         <thead>
                             <tr>
                                 <th>姓名</th>
-                                <th>出勤類型</th>
-                                <th>上班時間</th>
-                                <th>下班時間</th>
+                                <th>類型</th>
+                                <th>上班</th>
+                                <th>下班</th>
                             </tr>
                         </thead>
-                        <tbody id="attendance-tbody">
-                            <!-- Data injected via JS -->
-                        </tbody>
+                        <tbody id="attendance-tbody"></tbody>
                     </table>
                 </div>
             </section>
         </main>
     </div>
 
+    <script src="/js/common.js"></script>
     <script src="/js/app.js"></script>
 </body>
 </html>

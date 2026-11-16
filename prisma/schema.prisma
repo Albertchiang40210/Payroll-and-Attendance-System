@@ -14,6 +14,7 @@ model User {
   name        String
   hourly_rate Float    @default(0)
   role        Role     @default(EMPLOYEE)
+  active      Boolean  @default(true) // 離職/停用的員工不出現在打卡名單，但保留歷史紀錄
   
   attendances Attendance[]
   leaves      Leave[]
@@ -70,4 +71,10 @@ model Shift {
 
   createdAt  DateTime  @default(now())
   updatedAt  DateTime  @updatedAt
+}
+
+// 系統設定（店內通行碼雜湊、裝置驗證版本等）
+model Setting {
+  key   String @id
+  value String
 }

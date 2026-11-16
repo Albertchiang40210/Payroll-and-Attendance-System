@@ -37,7 +37,7 @@ exports.getSalaryReport = catchAsync(async (req, res) => {
         ]
     });
     
-    // Process advanced overtime logic
+    // 逐筆計算工時與薪資
     const summaryMap = {};
     const details = [];
     
@@ -49,25 +49,8 @@ exports.getSalaryReport = catchAsync(async (req, res) => {
         const diffMinutes = clockOut.diff(clockIn, 'minute');
         const dayHours = diffMinutes / 60;
         
-        let calculatedSalaryForDay = 0;
-        
-        if (a.punch_type === '加班' || dayHours > 8) {
-            // Overtime logic: First 8 hours normal rate, then 1.34x for next 2 hours, then 1.67x
-            if (dayHours > 8) {
-                const normalHours = 8;
-                const ot1Hours = Math.min(dayHours - 8, 2);
-                const ot2Hours = Math.max(dayHours - 10, 0);
-                calculatedSalaryForDay = (normalHours * user.hourly_rate) + 
-                                         (ot1Hours * user.hourly_rate * 1.34) + 
-                                         (ot2Hours * user.hourly_rate * 1.67);
-            } else {
-                // Whole shift is overtime? Just standard 1.34x for simplicity if punch_type = '加班'
-                calculatedSalaryForDay = (dayHours * user.hourly_rate * 1.34);
-            }
-        } else {
-            // Normal
-            calculatedSalaryForDay = dayHours * user.hourly_rate;
-        }
+        // 一律按時薪 × 工時計算（含加班，不加成）
+        let calculatedSalaryForDay = dayHours * user.hourly_rate;
         
         calculatedSalaryForDay = Math.round(calculatedSalaryForDay);
         

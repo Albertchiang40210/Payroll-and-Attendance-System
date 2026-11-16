@@ -1,6 +1,7 @@
 const { PrismaClient } = require('@prisma/client');
 const prisma = new PrismaClient();
 const bcrypt = require('bcrypt');
+const crypto = require('crypto');
 const catchAsync = require('../utils/catchAsync');
 
 exports.getAllEmployees = catchAsync(async (req, res) => {
@@ -11,13 +12,18 @@ exports.getAllEmployees = catchAsync(async (req, res) => {
             name: true,
             hourly_rate: true,
             role: true,
+            active: true,
         },
+        orderBy: { id: 'asc' },
     });
     res.json(users);
 });
 
 exports.createEmployee = catchAsync(async (req, res) => {
-    const { username, password, name, hourly_rate, role } = req.body;
+    const { name, hourly_rate, role } = req.body;
+    // 員工不需帳密：未提供時產生隨機值（無人知道，等同無法登入）
+    const username = req.body.username || `emp_${crypto.randomBytes(5).toString('hex')}`;
+    const password = req.body.password || crypto.randomBytes(24).toString('hex');
     
     const existingUser = await prisma.user.findUnique({ where: { username } });
     if (existingUser) {
@@ -50,12 +56,12 @@ exports.createEmployee = catchAsync(async (req, res) => {
 
 exports.updateEmployee = catchAsync(async (req, res) => {
     const { id } = req.params;
-    const { name, hourly_rate } = req.body;
+    const { name, hourly_rate, active } = req.body;
     
     const updatedUser = await prisma.user.update({
         where: { id: parseInt(id) },
-        data: { name, hourly_rate },
-        select: { id: true, name: true, hourly_rate: true }
+        data: { name, hourly_rate, active },
+        select: { id: true, name: true, hourly_rate: true, active: true }
     });
     
     res.json({ message: '✏️ 員工資料修改成功！', data: updatedUser });

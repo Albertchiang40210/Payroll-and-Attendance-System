@@ -1,12 +1,19 @@
 const { z } = require('zod');
 
+// 員工只用「選名字」打卡，不需要帳密（未提供時由系統自動產生不可猜的隨機值）；
+// 管理員（老闆）則必須提供帳號與密碼才能登入後台。
 exports.createUserSchema = z.object({
   body: z.object({
-    username: z.string().min(3, "帳號至少需要 3 個字元"),
-    password: z.string().min(6, "密碼至少需要 6 個字元"),
+    username: z.string().min(3, "帳號至少需要 3 個字元").optional(),
+    password: z.string().min(6, "密碼至少需要 6 個字元").optional(),
     name: z.string().min(1, "姓名為必填"),
     hourly_rate: z.number().min(0, "時薪不能為負數"),
     role: z.enum(['ADMIN', 'EMPLOYEE']).optional(),
+  }).superRefine((b, ctx) => {
+    if (b.role === 'ADMIN') {
+      if (!b.username) ctx.addIssue({ code: 'custom', path: ['username'], message: "管理員需要登入帳號" });
+      if (!b.password) ctx.addIssue({ code: 'custom', path: ['password'], message: "管理員需要登入密碼" });
+    }
   }),
 });
 
@@ -29,6 +36,7 @@ exports.updateUserSchema = z.object({
   body: z.object({
     name: z.string().min(1).optional(),
     hourly_rate: z.number().min(0).optional(),
+    active: z.boolean().optional(),
   }),
 });
 

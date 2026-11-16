@@ -22,3 +22,16 @@ docker exec punch_mysql sh -c \
 
 find "$BACKUP_DIR" -name 'punch_db_*.sql.gz' -mtime +"$KEEP_DAYS" -delete
 echo "備份完成: $OUT"
+
+# 選配：上傳到雲端（需先以 rclone 設定好加密的遠端，名稱預設 gdrive-crypt）
+# 未設定遠端時自動略過，不影響本機備份。
+RCLONE="${RCLONE:-$HOME/.local/bin/rclone}"
+REMOTE="${RCLONE_REMOTE:-gdrive-crypt}"
+if [ -x "$RCLONE" ] && "$RCLONE" listremotes 2>/dev/null | grep -qx "$REMOTE:"; then
+  "$RCLONE" copy "$OUT" "$REMOTE:punch_backups" \
+    && "$RCLONE" delete "$REMOTE:punch_backups" --min-age "${KEEP_DAYS}d" \
+    && echo "已上傳雲端: $REMOTE:punch_backups" \
+    || echo "警告: 雲端上傳失敗（本機備份仍保留）" >&2
+else
+  echo "略過雲端上傳（尚未設定 $REMOTE）"
+fi

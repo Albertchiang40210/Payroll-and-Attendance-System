@@ -10,7 +10,7 @@ const swaggerOptions = {
         info: {
             title: '點心店員工出勤與薪資系統 API',
             version: '1.0.0',
-            description: '員工打卡、排班、請假與勞基法加班費薪資結算 API（JWT 驗證 + 角色權限）。',
+            description: '員工打卡、排班、請假與薪資結算 API（JWT 驗證 + 角色權限）。',
         },
         servers: [
             {
