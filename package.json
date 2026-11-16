@@ -1,7 +1,7 @@
 {
   "name": "punch-system",
   "version": "1.0.0",
-  "description": "點心店員工出勤與薪資自動化結算系統 (Express + Prisma + MySQL)",
+  "description": "車庫小籠包員工出勤與薪資自動化結算系統 (Express + Prisma + MySQL)",
   "main": "src/server.js",
   "scripts": {
     "start": "node src/server.js",

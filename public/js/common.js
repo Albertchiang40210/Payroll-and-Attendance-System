@@ -71,6 +71,17 @@
         return fallback;
     }
 
+    // logo 檔案不存在或載入失敗時直接移除，避免出現破圖
+    function hideBrokenLogos() {
+        document.querySelectorAll('img[data-logo]').forEach((img) => {
+            const remove = () => img.remove();
+            if (img.complete && img.naturalWidth === 0) remove();
+            else img.addEventListener('error', remove, { once: true });
+        });
+    }
+    if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', hideBrokenLogos);
+    else hideBrokenLogos();
+
     window.HR = {
         getToken, getUser, setSession, clearSession,
         getKioskToken, setKioskToken, clearKioskToken,

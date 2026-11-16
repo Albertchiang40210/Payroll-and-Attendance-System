@@ -1,4 +1,4 @@
-# 🏪 點心專賣店 員工出勤與薪資自動化結算系統
+# 🏪 車庫小籠包 員工出勤與薪資自動化結算系統
 
 餐飲零售業的員工打卡、排班、請假與薪資結算後端系統（含簡易前端），薪資依打卡工時 × 時薪自動計算。
 
@@ -8,7 +8,10 @@
 
 - **JWT 登入 + 角色權限（RBAC）**：`ADMIN`（老闆）以帳密登入後台；`EMPLOYEE`（員工）不需帳密。
 - **員工選名字打卡**：老闆在後台產生「打卡 QR Code」，員工用手機掃描一次即完成裝置登記（取得僅能打卡的裝置 token），之後只要選自己的名字即可打卡，並可查看自己最近 14 天的打卡紀錄（不含薪資）。QR Code 重新產生後，舊 QR Code 與所有已登記手機立即失效。離職員工可「停用」（從名單移除但保留歷史紀錄）。
-- **加班打卡**：需先完成當天「正常」班的上、下班打卡才能使用，後端強制檢查。
+- **加班打卡**：需先完成當天「正常」班的上、下班打卡才能使用，後端強制檢查；下班打卡一律需先有同班別的上班打卡。
+- **休假**：整天沒有任何打卡紀錄的日子自動列為休假（只算到昨天、員工到職日之後、在職員工），顯示於員工紀錄、薪資核算與當日查詢。
+- **補打卡**（ADMIN）：老闆可替員工補登、修改、刪除出勤紀錄（不可補未來時間、下班需晚於上班），補登紀錄會標記「補登」並可附備註。
+- **出勤查詢**（ADMIN）：首頁可選任一日期，查看當天誰上班、誰尚未打卡（過去日期即為休假）。
 - **打卡**：上/下班打卡，支援「正常」「加班」兩種班別；同日同班別不可重複打上班卡、未打上班卡不可打下班卡。時間一律以 `Asia/Taipei` 計算。
 - **薪資結算**（ADMIN）：依月份彙整每位員工工時與薪資。一律按「工時 × 時薪」計算，加班與正常班相同，不另加成。
 - **請假**：員工送出申請，老闆審核為 `APPROVED` / `REJECTED`。
@@ -27,7 +30,7 @@
 | 日誌 | Winston（含每日輪替檔案） |
 | 測試 / CI | Jest + Supertest、GitHub Actions（含 MySQL service） |
 | 部署 | Docker / docker-compose |
-| 前端 | 原生 HTML/CSS/JS，淺色簡潔、手機優先（`public/`：打卡頁與老闆首頁 `index.html`、員工管理與 QR Code `employees.html`、薪資核算 `boss.html`） |
+| 前端 | 原生 HTML/CSS/JS，淺色簡潔、手機優先（`public/`：打卡頁與老闆首頁 `index.html`、員工管理 `employees.html`、打卡 QR Code `qrcode.html`、補打卡 `attendance.html`、薪資核算 `boss.html`；店標放在 `public/img/logo.jpg`） |
 
 ## 🚀 快速啟動
 
@@ -87,6 +90,10 @@ DATABASE_URL="mysql://root:<密碼>@localhost:3311/punch_test" JWT_SECRET=test n
 | 薪資 | GET | `/api/salary?month=YYYY-MM` | 月薪資結算 | ADMIN |
 | 員工 | GET / POST | `/api/employees` | 列表 / 新增 | ADMIN |
 | 員工 | PUT / DELETE | `/api/employees/:id` | 修改（姓名、時薪、`active` 停用）/ 刪除 | ADMIN |
+| 出勤 | GET | `/api/attendance/day?date=YYYY-MM-DD` | 指定日期的出勤與未打卡名單 | ADMIN |
+| 出勤 | GET | `/api/attendance/my-records` | 登入者最近 14 天紀錄與本月統計 | 登入者 |
+| 補打卡 | GET / POST | `/api/records` | 某員工某月紀錄（含休假日）/ 補登一筆 | ADMIN |
+| 補打卡 | PUT / DELETE | `/api/records/:id` | 修改 / 刪除一筆紀錄 | ADMIN |
 | 店內打卡 | POST | `/api/kiosk/pair` | 以 QR Code 通行碼換取裝置 token | 公開（限流） |
 | 店內打卡 | GET | `/api/kiosk/employees`、`/api/kiosk/records` | 在職員工名單 / 某員工最近紀錄 | 裝置 token |
 | 店內打卡 | POST | `/api/kiosk/clock` | 選名字打卡 | 裝置 token |

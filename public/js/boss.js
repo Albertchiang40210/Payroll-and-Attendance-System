@@ -47,7 +47,7 @@ function render(month, summary, details) {
     detailTbody.replaceChildren();
 
     if (summary.length === 0) {
-        salaryTbody.appendChild(emptyRow(4, '這個月份沒有完整的打卡紀錄'));
+        salaryTbody.appendChild(emptyRow(5, '這個月份沒有完整的打卡紀錄'));
     } else {
         let total = 0;
         summary.forEach((s) => {
@@ -58,13 +58,14 @@ function render(month, summary, details) {
             tr.appendChild(name);
             tr.appendChild(cell(money(s.hourly_rate), 'num'));
             tr.appendChild(cell(`${s.total_hours} 小時`, 'num'));
+            tr.appendChild(cell(`${s.day_off_count || 0} 天`, 'num'));
             tr.appendChild(cell(money(s.total_salary), 'num salary'));
             salaryTbody.appendChild(tr);
         });
 
         const foot = document.createElement('tr');
         const label = cell('合計');
-        label.colSpan = 3;
+        label.colSpan = 4;
         foot.appendChild(label);
         foot.appendChild(cell(money(total), 'num'));
         salaryTfoot.appendChild(foot);
@@ -75,11 +76,12 @@ function render(month, summary, details) {
     } else {
         details.forEach((d) => {
             const tr = document.createElement('tr');
+            if (d.day_off) tr.style.color = '#5b6470';
             tr.appendChild(cell(d.work_date));
             tr.appendChild(cell(d.name));
-            tr.appendChild(cell(d.punch_type));
-            tr.appendChild(cell(d.log_in));
-            tr.appendChild(cell(d.log_out));
+            tr.appendChild(cell(d.manual ? `${d.punch_type}（補登）` : d.punch_type));
+            tr.appendChild(cell(d.day_off ? '—' : d.log_in));
+            tr.appendChild(cell(d.day_off ? '—' : d.log_out));
             tr.appendChild(cell(d.day_hours, 'num'));
             tr.appendChild(cell(money(d.earned), 'num'));
             detailTbody.appendChild(tr);

@@ -8,7 +8,7 @@ const swaggerOptions = {
     definition: {
         openapi: '3.0.0',
         info: {
-            title: '點心店員工出勤與薪資系統 API',
+            title: '車庫小籠包員工出勤與薪資系統 API',
             version: '1.0.0',
             description: '員工打卡、排班、請假與薪資結算 API（JWT 驗證 + 角色權限）。',
         },

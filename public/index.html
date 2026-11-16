@@ -2,15 +2,20 @@
 <html lang="zh-TW">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
     <meta name="theme-color" content="#ffffff">
     <meta name="referrer" content="no-referrer">
-    <title>點心專賣店 - 打卡系統</title>
+    <title>車庫小籠包 - 打卡系統</title>
     <link rel="stylesheet" href="/css/style.css">
 </head>
 <body>
     <!-- 打卡面板（員工選名字後使用） -->
     <template id="clock-panel-tpl">
+        <div class="greeting">
+            <div class="greeting-hi"></div>
+            <div class="greeting-sub"></div>
+        </div>
+
         <div class="now">
             <div class="now-date"></div>
             <div class="now-time">--:--:--</div>
@@ -34,22 +39,27 @@
             </div>
         </div>
 
-        <h3 class="records-title">打卡紀錄（最近 14 天）</h3>
-        <div class="table-wrap">
-            <table class="records-table">
-                <thead>
-                    <tr><th>日期</th><th>類型</th><th>上班</th><th>下班</th></tr>
-                </thead>
-                <tbody></tbody>
-            </table>
+        <h3 class="records-title">本月統計</h3>
+        <div class="month-stats">
+            <div class="mstat"><div class="mstat-num" data-stat="work_days">-</div><div class="mstat-label">出勤天數</div></div>
+            <div class="mstat"><div class="mstat-num" data-stat="total_hours">-</div><div class="mstat-label">工時（小時）</div></div>
+            <div class="mstat"><div class="mstat-num" data-stat="day_off_days">-</div><div class="mstat-label">休假天數</div></div>
         </div>
+
+        <h3 class="records-title">打卡紀錄（最近 14 天）</h3>
+        <ul class="record-list"></ul>
     </template>
 
     <!-- 1. 尚未登記的手機：請掃 QR Code -->
     <div id="pair-view" hidden>
-        <div class="login-wrap">
+        <div class="hero">
+        <img class="hero-logo" data-logo src="/img/logo.jpg" alt="車庫小籠包" width="88" height="88">
+        <div class="hero-name">車庫小籠包</div>
+        <div class="hero-sub">員工打卡</div>
+    </div>
+        <div class="login-wrap hero-follow">
             <div class="card">
-                <h1>點心專賣店打卡</h1>
+                <h1>歡迎使用打卡系統</h1>
                 <p class="subtitle">請向店長索取打卡 QR Code，用手機掃描後即可打卡。</p>
 
                 <div id="pair-message" class="result" role="status" aria-live="polite" hidden></div>
@@ -62,18 +72,19 @@
                     <button type="submit" id="pair-btn" class="btn btn-primary btn-block">確認</button>
                 </form>
 
-                <p class="link-row"><button type="button" class="link-btn" data-action="show-login">老闆登入</button></p>
             </div>
+            <footer class="site-foot">車庫小籠包 · 手工現做<br><button type="button" class="link-btn" data-action="show-login">老闆登入</button></footer>
         </div>
     </div>
 
     <!-- 2. 已登記的手機：選名字 -->
     <div id="kiosk-view" hidden>
-        <header class="topbar">
-            <div class="brand">點心專賣店</div>
-            <button type="button" class="link-btn" data-action="show-login">老闆登入</button>
-        </header>
-        <main class="container">
+        <div class="hero">
+        <img class="hero-logo" data-logo src="/img/logo.jpg" alt="車庫小籠包" width="88" height="88">
+        <div class="hero-name">車庫小籠包</div>
+        <div class="hero-sub">員工打卡</div>
+    </div>
+        <main class="container hero-follow">
             <section class="card">
                 <div class="now">
                     <div class="now-date"></div>
@@ -83,6 +94,7 @@
                 <div id="kiosk-message" class="result error" role="alert" hidden></div>
                 <div id="name-grid" class="name-grid"></div>
             </section>
+            <footer class="site-foot">車庫小籠包 · 手工現做<br><button type="button" class="link-btn" data-action="show-login">老闆登入</button></footer>
         </main>
     </div>
 
@@ -90,7 +102,7 @@
     <div id="punch-view" hidden>
         <header class="topbar">
             <button type="button" id="punch-back" class="btn btn-ghost">← 換人</button>
-            <div class="brand" id="punch-name"></div>
+            <div class="brand"><img class="brand-logo" data-logo src="/img/logo.jpg" alt="" width="32" height="32"><span id="punch-name"></span></div>
             <span></span>
         </header>
         <main class="container">
@@ -124,23 +136,70 @@
     <!-- 老闆主畫面 -->
     <div id="dashboard-view" hidden>
         <header class="topbar">
-            <div class="brand">點心專賣店</div>
+            <div class="brand"><img class="brand-logo" data-logo src="/img/logo.jpg" alt="" width="32" height="32">車庫小籠包</div>
             <div class="topbar-user">
                 <span id="user-name-display"></span>
                 <button id="logout-btn" class="btn btn-ghost" type="button">登出</button>
             </div>
         </header>
 
-        <main class="container">
+        <main class="container wide">
+            <!-- 還沒有員工時的引導 -->
+            <section id="onboarding" class="card onboarding" hidden>
+                <h2>開始使用</h2>
+                <p class="subtitle">還沒有員工，照著三個步驟設定就能開始打卡（下方有對應的功能入口）：</p>
+                <ol>
+                    <li><strong>新增員工</strong>：只需要姓名和時薪，不用帳號密碼。</li>
+                    <li><strong>列印打卡 QR Code</strong>：交給店內負責人，員工到店時出示。</li>
+                    <li>員工用手機掃描 QR Code，之後只要選自己的名字就能打卡。</li>
+                </ol>
+            </section>
+
+            <!-- 今日數字 -->
+            <section class="stats" aria-label="今日概況">
+                <div class="stat"><div class="stat-num" id="stat-staff">-</div><div class="stat-label">在職員工</div></div>
+                <div class="stat"><div class="stat-num" id="stat-punched">-</div><div class="stat-label">今日已打卡</div></div>
+                <div class="stat"><div class="stat-num" id="stat-working">-</div><div class="stat-label">上班中</div></div>
+                <div class="stat"><div class="stat-num" id="stat-absent">-</div><div class="stat-label">尚未打卡</div></div>
+            </section>
+
+            <!-- 尚未打卡 -->
+            <section id="absent-card" class="card" hidden>
+                <h2>今天尚未打卡</h2>
+                <div id="absent-list" class="tag-list"></div>
+            </section>
+
+            <!-- 捷徑 -->
+            <section class="shortcuts">
+                <a class="shortcut" href="/employees.html">
+                    <span class="shortcut-title">員工管理</span>
+                    <span class="shortcut-desc">新增員工、調整時薪、停用離職員工</span>
+                </a>
+                <a class="shortcut" href="/qrcode.html">
+                    <span class="shortcut-title">打卡 QR Code</span>
+                    <span class="shortcut-desc">列印給員工掃描，重新產生可讓舊手機失效</span>
+                </a>
+                <a class="shortcut" href="/attendance.html">
+                    <span class="shortcut-title">補打卡</span>
+                    <span class="shortcut-desc">員工忘記打卡時補登，或修改打錯的時間</span>
+                </a>
+                <a class="shortcut" href="/boss.html">
+                    <span class="shortcut-title">薪資核算</span>
+                    <span class="shortcut-desc">依月份計算每位員工的工時與薪資</span>
+                </a>
+            </section>
+
             <section class="card">
                 <div class="card-head">
                     <div>
-                        <h2>今日出勤</h2>
-                        <p class="subtitle">老闆專用</p>
+                        <h2 id="day-title">今日出勤</h2>
+                        <p class="subtitle">可以選日期，查詢那一天誰有上班</p>
                     </div>
-                    <div class="btn-row">
-                        <a class="btn btn-primary" href="/employees.html">員工管理</a>
-                        <a class="btn btn-primary" href="/boss.html">薪資核算</a>
+                    <div class="date-nav">
+                        <button id="day-prev" type="button" class="btn btn-ghost" aria-label="前一天">←</button>
+                        <input type="date" id="day-input" aria-label="查詢日期">
+                        <button id="day-next" type="button" class="btn btn-ghost" aria-label="後一天">→</button>
+                        <button id="day-today" type="button" class="btn btn-ghost">今天</button>
                     </div>
                 </div>
                 <div class="table-wrap">
@@ -156,6 +215,7 @@
                         <tbody id="attendance-tbody"></tbody>
                     </table>
                 </div>
+                <p id="day-absent" class="day-absent" hidden></p>
             </section>
         </main>
     </div>

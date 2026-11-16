@@ -76,22 +76,75 @@ exports.getTodayRecords = async (userId) => {
     }));
 };
 
-// 最近 N 天（含今天）的打卡紀錄，新到舊排序
+// 休假日：整天沒有任何打卡紀錄的日子。
+// 只算到「昨天」（今天尚未結束，不能判定）；員工到職日之前不算。
+exports.computeDayOffs = ({ createdAt, workedDates, from, to }) => {
+    const todayStr = getTaipeiTime().format('YYYY-MM-DD');
+    const yesterday = dayjs.utc(todayStr).subtract(1, 'day').format('YYYY-MM-DD');
+    const joined = dayjs(createdAt).tz(TZ).format('YYYY-MM-DD');
+    const start = from > joined ? from : joined;
+    const end = to < yesterday ? to : yesterday;
+
+    const result = [];
+    const last = dayjs.utc(end);
+    for (let d = dayjs.utc(start); !d.isAfter(last, 'day'); d = d.add(1, 'day')) {
+        const ymd = d.format('YYYY-MM-DD');
+        if (!workedDates.has(ymd)) result.push(ymd);
+    }
+    return result;
+};
+
+// 最近 N 天（含今天）的打卡紀錄，新到舊排序；沒有打卡的整天以「休假」列出
 exports.getRecentRecords = async (userId, days = 14) => {
     const today = getTaipeiTime();
+    const todayStr = today.format('YYYY-MM-DD');
     const since = today.subtract(days - 1, 'day').format('YYYY-MM-DD');
-    const records = await prisma.attendance.findMany({
-        where: { userId, work_date: { gte: since } },
-        orderBy: [{ work_date: 'desc' }, { clock_in: 'desc' }]
-    });
+
+    const [records, user] = await Promise.all([
+        prisma.attendance.findMany({
+            where: { userId, work_date: { gte: since } },
+            orderBy: [{ work_date: 'desc' }, { clock_in: 'desc' }]
+        }),
+        prisma.user.findUnique({ where: { id: userId }, select: { createdAt: true } })
+    ]);
+
     const rows = records.map((a) => ({
         work_date: a.work_date,
         punch_type: a.punch_type,
         log_in: dayjs(a.clock_in).tz(TZ).format('HH:mm:ss'),
-        log_out: a.clock_out ? dayjs(a.clock_out).tz(TZ).format('HH:mm:ss') : null
+        log_out: a.clock_out ? dayjs(a.clock_out).tz(TZ).format('HH:mm:ss') : null,
+        manual: a.manual
     }));
-    const todayStr = today.format('YYYY-MM-DD');
-    return { today: rows.filter((r) => r.work_date === todayStr), recent: rows };
+
+    const dayOffs = exports.computeDayOffs({
+        createdAt: user.createdAt,
+        workedDates: new Set(records.map((r) => r.work_date)),
+        from: since,
+        to: todayStr
+    }).map((d) => ({ work_date: d, punch_type: '休假', log_in: null, log_out: null, day_off: true }));
+
+    // 本月統計（只有天數與工時，不含薪資）
+    const monthStr = todayStr.slice(0, 7);
+    const monthRecords = await prisma.attendance.findMany({
+        where: { userId, work_date: { startsWith: monthStr } }
+    });
+    const totalMinutes = monthRecords
+        .filter((a) => a.clock_out)
+        .reduce((sum, a) => sum + dayjs(a.clock_out).diff(dayjs(a.clock_in), 'minute'), 0);
+    const monthDayOffs = exports.computeDayOffs({
+        createdAt: user.createdAt,
+        workedDates: new Set(monthRecords.map((r) => r.work_date)),
+        from: `${monthStr}-01`,
+        to: todayStr
+    });
+    const month = {
+        work_days: new Set(monthRecords.map((r) => r.work_date)).size,
+        total_hours: Math.round((totalMinutes / 60) * 10) / 10,
+        day_off_days: monthDayOffs.length
+    };
+
+    const recent = [...rows, ...dayOffs].sort((a, b) => (a.work_date < b.work_date ? 1 : a.work_date > b.work_date ? -1 : 0));
+    return { today: rows.filter((r) => r.work_date === todayStr), recent, month };
 };
 
 exports.getTaipeiTime = getTaipeiTime;

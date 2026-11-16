@@ -1,0 +1,97 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="theme-color" content="#ffffff">
+    <title>車庫小籠包 - 補打卡</title>
+    <link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+    <header class="topbar">
+        <div class="brand"><img class="brand-logo" data-logo src="/img/logo.jpg" alt="" width="32" height="32">補打卡</div>
+        <div class="topbar-user">
+            <a class="btn btn-ghost" href="/">回首頁</a>
+            <button id="logout-btn" class="btn btn-ghost" type="button">登出</button>
+        </div>
+    </header>
+
+    <main class="container wide">
+        <div id="message" class="result" role="status" aria-live="polite" hidden></div>
+
+        <!-- 選擇員工與月份 -->
+        <section class="card">
+            <h2>選擇員工</h2>
+            <p class="subtitle">員工忘記打卡、或打錯時，由老闆在這裡補登或修改。補登的紀錄會留下「補登」標記。</p>
+            <div class="toolbar">
+                <div class="field">
+                    <label for="emp-select">員工</label>
+                    <select id="emp-select"></select>
+                </div>
+                <div class="field">
+                    <label for="month-input">月份</label>
+                    <input type="month" id="month-input">
+                </div>
+            </div>
+        </section>
+
+        <!-- 補登 / 修改表單 -->
+        <section class="card">
+            <h2 id="form-title">補打卡</h2>
+            <p id="form-sub" class="subtitle">新增一筆紀錄。上班時間必填，下班時間可以先留白。</p>
+            <form id="record-form" class="form-grid">
+                <div class="field">
+                    <label for="rec-date">日期</label>
+                    <input type="date" id="rec-date" required>
+                </div>
+                <div class="field">
+                    <label for="rec-type">類型</label>
+                    <select id="rec-type">
+                        <option value="正常">正常班</option>
+                        <option value="加班">加班</option>
+                    </select>
+                </div>
+                <div class="field">
+                    <label for="rec-in">上班時間</label>
+                    <input type="time" id="rec-in" required>
+                </div>
+                <div class="field">
+                    <label for="rec-out">下班時間（可留白）</label>
+                    <input type="time" id="rec-out">
+                </div>
+                <div class="field form-wide">
+                    <label for="rec-note">備註（選填）</label>
+                    <input type="text" id="rec-note" maxlength="200" placeholder="例如：忘記打卡，經確認補登" autocomplete="off">
+                </div>
+                <div class="form-actions">
+                    <button id="rec-save" type="submit" class="btn btn-primary">補登</button>
+                    <button id="rec-cancel" type="button" class="btn btn-ghost" hidden>取消修改</button>
+                </div>
+            </form>
+        </section>
+
+        <!-- 該月紀錄 -->
+        <section class="card">
+            <h2 id="list-title">本月紀錄</h2>
+            <div class="table-wrap">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>日期</th>
+                            <th>類型</th>
+                            <th>上班</th>
+                            <th>下班</th>
+                            <th>備註</th>
+                            <th></th>
+                        </tr>
+                    </thead>
+                    <tbody id="record-tbody"></tbody>
+                </table>
+            </div>
+        </section>
+    </main>
+
+    <script src="/js/common.js"></script>
+    <script src="/js/attendance.js"></script>
+</body>
+</html>

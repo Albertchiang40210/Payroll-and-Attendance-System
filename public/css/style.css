@@ -10,6 +10,10 @@
     --primary-soft: #e6f4f2;
     --out: #9a3412;
     --out-dark: #7c2a0e;
+    --brand: #d5261c;
+    --brand-dark: #a81a12;
+    --brand-soft: #fdecea;
+    --gold: #f7b500;
     --danger: #b91c1c;
     --danger-soft: #fdecec;
     --success: #166534;
@@ -26,6 +30,18 @@
 
 [hidden] {
     display: none !important;
+}
+
+/* 手機：取消雙擊放大的延遲、去掉點擊灰框 */
+button,
+a,
+select,
+input {
+    touch-action: manipulation;
+}
+button,
+a {
+    -webkit-tap-highlight-color: transparent;
 }
 
 body {
@@ -54,6 +70,9 @@ body {
     justify-content: space-between;
     gap: 12px;
     padding: 12px 16px;
+    padding-top: calc(12px + env(safe-area-inset-top));
+    padding-left: calc(16px + env(safe-area-inset-left));
+    padding-right: calc(16px + env(safe-area-inset-right));
     background: var(--surface);
     border-bottom: 1px solid var(--border);
 }
@@ -84,6 +103,7 @@ body {
     max-width: 640px;
     margin: 0 auto;
     padding: 16px;
+    padding-bottom: calc(24px + env(safe-area-inset-bottom));
     display: grid;
     gap: 16px;
 }
@@ -119,6 +139,10 @@ body {
     padding: 40px 16px;
 }
 
+.login-wrap.hero-follow {
+    padding-top: 0;
+}
+
 .login-card h1 {
     font-size: 24px;
     margin-bottom: 4px;
@@ -137,7 +161,9 @@ body {
 
 input[type="text"],
 input[type="password"],
-input[type="month"] {
+input[type="month"],
+input[type="date"],
+input[type="time"] {
     width: 100%;
     min-height: 48px;
     padding: 10px 12px;
@@ -239,7 +265,7 @@ input:focus {
 }
 
 .now-time {
-    font-size: 52px;
+    font-size: clamp(40px, 14vw, 52px);
     font-weight: 700;
     font-variant-numeric: tabular-nums;
     line-height: 1.2;
@@ -432,6 +458,133 @@ input[type="number"] {
     flex-wrap: wrap;
 }
 
+/* ---------- 品牌 ---------- */
+.hero {
+    background: linear-gradient(160deg, var(--brand) 0%, var(--brand-dark) 100%);
+    color: #fff;
+    text-align: center;
+    padding: 24px 16px 44px;
+    padding-top: calc(24px + env(safe-area-inset-top));
+    border-radius: 0 0 28px 28px;
+}
+
+.hero-logo {
+    display: block;
+    width: 88px;
+    height: 88px;
+    margin: 0 auto 10px;
+    object-fit: cover;
+    border-radius: 20px;
+    border: 3px solid rgba(255, 255, 255, 0.95);
+    box-shadow: 0 6px 18px rgba(0, 0, 0, 0.25);
+    background: #fff;
+}
+
+.hero-name {
+    font-size: 28px;
+    font-weight: 800;
+    letter-spacing: 3px;
+    line-height: 1.2;
+}
+
+.hero-sub {
+    margin-top: 2px;
+    font-size: 15px;
+    letter-spacing: 6px;
+    color: #ffe9a8;
+}
+
+/* 內容卡片往上疊在橫幅上 */
+.hero-follow {
+    margin-top: -28px;
+    position: relative;
+}
+
+.brand {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.brand-logo {
+    width: 32px;
+    height: 32px;
+    border-radius: 8px;
+    object-fit: cover;
+}
+
+.login-wrap .site-foot {
+    margin-top: 20px;
+}
+
+.site-foot {
+    text-align: center;
+    color: var(--muted);
+    font-size: 14px;
+    letter-spacing: 2px;
+    padding: 4px 0 8px;
+}
+
+.greeting {
+    text-align: center;
+    margin-bottom: 8px;
+}
+
+.greeting-hi {
+    font-size: 24px;
+    font-weight: 800;
+}
+
+.greeting-sub {
+    color: var(--muted);
+    font-size: 15px;
+}
+
+.month-stats {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 8px;
+}
+
+.mstat {
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 10px 4px;
+    text-align: center;
+    background: #fff;
+}
+
+.mstat-num {
+    font-size: 24px;
+    font-weight: 800;
+    color: var(--brand-dark);
+    line-height: 1.2;
+    font-variant-numeric: tabular-nums;
+}
+
+.mstat-label {
+    font-size: 12px;
+    color: var(--muted);
+}
+
+.avatar {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 44px;
+    height: 44px;
+    border-radius: 50%;
+    background: var(--brand-soft);
+    color: var(--brand-dark);
+    font-size: 22px;
+    font-weight: 800;
+}
+
+#punch-back {
+    min-height: 44px;
+    padding: 8px 16px;
+}
+
 /* ---------- 員工選名字 / 打卡紀錄 ---------- */
 .center {
     text-align: center;
@@ -445,8 +598,10 @@ input[type="number"] {
 }
 
 .btn-name {
-    min-height: 72px;
-    font-size: 22px;
+    flex-direction: column;
+    gap: 6px;
+    min-height: 112px;
+    font-size: 20px;
     background: #fff;
     color: var(--text);
     border: 2px solid var(--primary);
@@ -513,18 +668,80 @@ input[type="number"] {
     margin-top: 10px;
 }
 
-.records-table {
-    min-width: 0;
+.record-list {
+    list-style: none;
+    display: grid;
+    gap: 8px;
 }
 
-.records-table .today-row td {
+.record {
+    padding: 10px 14px;
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    background: #fff;
+}
+
+.record.today {
     background: var(--primary-soft);
-    font-weight: 600;
+    border-color: var(--primary);
 }
 
-.records-table .pending {
+.record.off {
+    background: var(--bg);
+}
+
+.record-head {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 6px;
+}
+
+.record-date {
+    font-weight: 700;
+    margin-right: 2px;
+}
+
+.record-times {
+    margin-top: 2px;
+    font-size: 16px;
+    font-variant-numeric: tabular-nums;
+}
+
+.record.off .record-times {
+    color: var(--muted);
+    font-size: 14px;
+}
+
+.record-times .pending {
     color: var(--out);
-    font-weight: 600;
+    font-weight: 700;
+}
+
+.record-empty {
+    text-align: center;
+    color: var(--muted);
+    padding: 16px 0;
+}
+
+.tag-manual {
+    background: #e8eefc;
+    color: #1d3f9a;
+    font-size: 12px;
+}
+
+.form-wide {
+    grid-column: 1 / -1;
+}
+
+.tag-off {
+    background: #eceff3;
+    color: var(--muted);
+}
+
+.dayoff-note {
+    color: var(--muted);
+    font-size: 14px;
 }
 
 .tag-ot {
@@ -536,6 +753,120 @@ input[type="number"] {
 .btn-ot-out.clock-btn {
     min-height: 60px;
     font-size: 19px;
+}
+
+/* ---------- 老闆首頁 ---------- */
+.stats {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 12px;
+}
+
+.stat {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    box-shadow: var(--shadow);
+    padding: 16px;
+    text-align: center;
+}
+
+.stat-num {
+    font-size: 36px;
+    font-weight: 700;
+    line-height: 1.2;
+    font-variant-numeric: tabular-nums;
+    color: var(--primary-dark);
+}
+
+.stat-label {
+    font-size: 14px;
+    color: var(--muted);
+}
+
+.shortcuts {
+    display: grid;
+    gap: 12px;
+    grid-template-columns: repeat(2, 1fr);
+}
+
+.shortcut {
+    display: block;
+    background: var(--surface);
+    border: 1.5px solid var(--border);
+    border-radius: var(--radius);
+    box-shadow: var(--shadow);
+    padding: 16px 18px;
+    text-decoration: none;
+    color: inherit;
+}
+.shortcut:hover {
+    border-color: var(--primary);
+    background: var(--primary-soft);
+}
+
+.shortcut-title {
+    display: block;
+    font-size: 18px;
+    font-weight: 700;
+    color: var(--primary-dark);
+}
+
+.shortcut-desc {
+    display: block;
+    font-size: 14px;
+    color: var(--muted);
+    margin-top: 2px;
+}
+
+.date-nav {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    flex-wrap: wrap;
+}
+
+.date-nav input[type="date"] {
+    width: auto;
+    min-height: 40px;
+    padding: 6px 10px;
+}
+
+.date-nav .btn {
+    min-height: 40px;
+}
+
+.day-absent {
+    margin-top: 12px;
+    padding: 10px 14px;
+    border-radius: 10px;
+    background: #fff4e5;
+    color: var(--out);
+    font-weight: 600;
+}
+
+.tag-list {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-top: 10px;
+}
+
+.tag-lg {
+    font-size: 16px;
+    padding: 4px 14px;
+    background: #fff4e5;
+    color: var(--out);
+}
+
+.onboarding ol {
+    margin: 8px 0 0 22px;
+    display: grid;
+    gap: 6px;
+}
+
+.onboarding strong {
+    color: var(--primary-dark);
 }
 
 /* ---------- QR Code ---------- */
@@ -602,6 +933,12 @@ input[type="number"] {
 
 /* ---------- 桌面版微調 ---------- */
 @media (min-width: 560px) {
+    .stats {
+        grid-template-columns: repeat(4, 1fr);
+    }
+    .shortcuts {
+        grid-template-columns: repeat(4, 1fr);
+    }
     .name-grid {
         grid-template-columns: repeat(3, 1fr);
     }

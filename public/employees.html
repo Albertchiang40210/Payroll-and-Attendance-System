@@ -4,13 +4,14 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="theme-color" content="#ffffff">
-    <title>點心專賣店 - 員工管理</title>
+    <title>車庫小籠包 - 員工管理</title>
     <link rel="stylesheet" href="/css/style.css">
 </head>
 <body>
     <header class="topbar">
-        <div class="brand">員工管理</div>
+        <div class="brand"><img class="brand-logo" data-logo src="/img/logo.jpg" alt="" width="32" height="32">員工管理</div>
         <div class="topbar-user">
+            <a class="btn btn-ghost" href="/qrcode.html">打卡 QR Code</a>
             <a class="btn btn-ghost" href="/">回首頁</a>
             <button id="logout-btn" class="btn btn-ghost" type="button">登出</button>
         </div>
@@ -18,30 +19,6 @@
 
     <main class="container wide">
         <div id="message" class="result" role="status" aria-live="polite" hidden></div>
-
-        <!-- 員工打卡 QR Code -->
-        <section class="card">
-            <h2>員工打卡 QR Code</h2>
-            <p class="subtitle">員工第一次打卡時，用手機掃描這張 QR Code，之後只要選自己的名字就能打卡。請只在員工到店時出示，不要把圖片傳到網路上。</p>
-
-            <div id="qr-empty" hidden>
-                <p class="qr-note">還沒有產生 QR Code。</p>
-                <button id="qr-create" type="button" class="btn btn-primary">產生 QR Code</button>
-            </div>
-
-            <div id="qr-print" class="qr-box" hidden>
-                <div class="print-only">點心專賣店　員工打卡</div>
-                <img id="qr-img" alt="員工打卡 QR Code">
-                <div class="qr-note">掃不到時，可在打卡頁手動輸入通行碼：</div>
-                <div id="qr-code" class="qr-code-text"></div>
-                <div class="form-actions no-print" style="justify-content:center">
-                    <button id="qr-print-btn" type="button" class="btn btn-primary">列印</button>
-                    <a id="qr-download" class="btn btn-ghost" download="打卡QRCode.svg">下載圖片</a>
-                    <button id="qr-regen" type="button" class="btn btn-ghost">重新產生</button>
-                </div>
-                <p class="hint no-print">重新產生後，舊的 QR Code 和所有已登記的員工手機都會失效，需要重新掃描。員工離職或手機遺失時使用。</p>
-            </div>
-        </section>
 
         <!-- 新增員工 -->
         <section class="card">

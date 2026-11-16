@@ -129,3 +129,28 @@ describe('Overtime prerequisite', () => {
         expect(notClockedOut.statusCode).toEqual(400);
     });
 });
+
+describe('Clock out requires clock in', () => {
+    const clock = (body) =>
+        request(app).post('/api/clock').set('Authorization', `Bearer ${token}`).send(body);
+
+    beforeAll(async () => {
+        await prisma.attendance.deleteMany({ where: { userId } });
+    });
+
+    it('blocks a normal clock out when there is no normal clock in', async () => {
+        const res = await clock({ type: 'out', punch_type: '正常' });
+        expect(res.statusCode).toEqual(400);
+        expect(res.body.message).toContain('請先打上班卡');
+    });
+
+    it('blocks an overtime clock out when there is no overtime clock in', async () => {
+        const res = await clock({ type: 'out', punch_type: '加班' });
+        expect(res.statusCode).toEqual(400);
+    });
+
+    it('does not create any record from the blocked attempts', async () => {
+        const count = await prisma.attendance.count({ where: { userId } });
+        expect(count).toBe(0);
+    });
+});

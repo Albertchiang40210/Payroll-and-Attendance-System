@@ -37,6 +37,8 @@ model Attendance {
   clock_in   DateTime  @default(now())
   clock_out  DateTime?
   punch_type String    @default("正常") // "正常" or "加班"
+  manual     Boolean   @default(false) // 由老闆補登/修改過的紀錄
+  note       String?   @db.VarChar(200)
 
   createdAt  DateTime  @default(now())
   updatedAt  DateTime  @updatedAt

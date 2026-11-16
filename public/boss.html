@@ -4,13 +4,14 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="theme-color" content="#ffffff">
-    <title>點心專賣店 - 薪資核算</title>
+    <title>車庫小籠包 - 薪資核算</title>
     <link rel="stylesheet" href="/css/style.css">
 </head>
 <body>
     <header class="topbar">
-        <div class="brand">薪資核算</div>
+        <div class="brand"><img class="brand-logo" data-logo src="/img/logo.jpg" alt="" width="32" height="32">薪資核算</div>
         <div class="topbar-user">
+            <a class="btn btn-ghost" href="/attendance.html">補打卡</a>
             <a class="btn btn-ghost" href="/employees.html">員工管理</a>
             <a class="btn btn-ghost" href="/">回打卡頁</a>
             <button id="logout-btn" class="btn btn-ghost" type="button">登出</button>
@@ -31,7 +32,7 @@
 
         <section id="result-card" class="card" hidden>
             <h2 id="result-title">本月薪資</h2>
-            <p class="subtitle">只計入已完成上下班打卡的紀錄；加班與正常班一律按時薪 × 工時計算。</p>
+            <p class="subtitle">只計入已完成上下班打卡的紀錄；加班與正常班一律按時薪 × 工時計算。整天沒有打卡的日子（不含今天）列為休假。</p>
 
             <div class="table-wrap">
                 <table>
@@ -40,6 +41,7 @@
                             <th>員工</th>
                             <th class="num">時薪</th>
                             <th class="num">總工時</th>
+                            <th class="num">休假天數</th>
                             <th class="num">應發薪資</th>
                         </tr>
                     </thead>

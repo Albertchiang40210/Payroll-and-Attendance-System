@@ -52,14 +52,22 @@ function formatDate(ymd, todayYmd) {
     return ymd === todayYmd ? `今天 ${label}` : label;
 }
 
-function createPanel(root, { load, punch }) {
+function createPanel(root, { load, punch, name }) {
     root.replaceChildren(document.getElementById('clock-panel-tpl').content.cloneNode(true));
     tickClock();
 
     const buttons = [...root.querySelectorAll('.clock-btn')];
     const resultEl = root.querySelector('.panel-result');
     const statusEl = root.querySelector('.status-line');
-    const tbody = root.querySelector('.records-table tbody');
+    const recordList = root.querySelector('.record-list');
+    const greetingHi = root.querySelector('.greeting-hi');
+    const greetingSub = root.querySelector('.greeting-sub');
+    const statEls = Object.fromEntries([...root.querySelectorAll('[data-stat]')].map((el) => [el.dataset.stat, el]));
+
+    // 依台灣時間問候
+    const hour = Number(new Intl.DateTimeFormat('en-GB', { timeZone: 'Asia/Taipei', hour: '2-digit', hour12: false }).format(new Date()));
+    const hello = hour >= 5 && hour < 11 ? '早安' : hour >= 11 && hour < 18 ? '午安' : '晚安';
+    greetingHi.textContent = `🥟 ${hello}，${name || ''}`;
     const button = (type, punchType) =>
         buttons.find((b) => b.dataset.type === type && (b.dataset.punch || '正常') === punchType);
 
@@ -84,31 +92,65 @@ function createPanel(root, { load, punch }) {
         const lines = [describe('今天', normal) || '今天還沒有打卡紀錄', describe('加班', overtime)].filter(Boolean);
         statusEl.textContent = lines.join('\n');
         statusEl.className = `status-line ${normal && normal.log_out ? 'done' : normal ? 'working' : 'none'}`;
+        greetingSub.textContent = normal && normal.log_out
+            ? '今天辛苦了，好好休息！'
+            : normal ? '工作加油！下班別忘了打卡喔'
+            : '記得打上班卡喔';
 
-        // 最近紀錄
+        // 本月統計
+        if (data.month) {
+            statEls.work_days.textContent = data.month.work_days;
+            statEls.total_hours.textContent = data.month.total_hours;
+            statEls.day_off_days.textContent = data.month.day_off_days;
+        }
+
+        // 最近紀錄（手機用清單呈現，不用表格）
         const todayYmd = new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Taipei' }).format(new Date());
-        tbody.replaceChildren();
+        recordList.replaceChildren();
         if (data.recent.length === 0) {
-            const tr = document.createElement('tr');
-            const td = makeCell('最近 14 天沒有打卡紀錄', 'empty');
-            td.colSpan = 4;
-            tr.appendChild(td);
-            tbody.appendChild(tr);
+            const li = document.createElement('li');
+            li.className = 'record-empty';
+            li.textContent = '最近 14 天沒有打卡紀錄';
+            recordList.appendChild(li);
             return;
         }
         data.recent.forEach((r) => {
-            const tr = document.createElement('tr');
-            if (r.work_date === todayYmd) tr.className = 'today-row';
-            tr.appendChild(makeCell(formatDate(r.work_date, todayYmd)));
-            const typeTd = document.createElement('td');
+            const li = document.createElement('li');
+            li.className = `record${r.work_date === todayYmd ? ' today' : ''}${r.day_off ? ' off' : ''}`;
+
+            const head = document.createElement('div');
+            head.className = 'record-head';
+            const date = document.createElement('span');
+            date.className = 'record-date';
+            date.textContent = formatDate(r.work_date, todayYmd);
+            head.appendChild(date);
+
             const tag = document.createElement('span');
-            tag.className = r.punch_type === '加班' ? 'tag tag-ot' : 'tag';
+            tag.className = r.day_off ? 'tag tag-off' : r.punch_type === '加班' ? 'tag tag-ot' : 'tag';
             tag.textContent = r.punch_type;
-            typeTd.appendChild(tag);
-            tr.appendChild(typeTd);
-            tr.appendChild(makeCell(r.log_in));
-            tr.appendChild(makeCell(r.log_out || '尚未下班', r.log_out ? '' : 'pending'));
-            tbody.appendChild(tr);
+            head.appendChild(tag);
+            if (r.manual) {
+                const m = document.createElement('span');
+                m.className = 'tag tag-manual';
+                m.textContent = '補登';
+                head.appendChild(m);
+            }
+            li.appendChild(head);
+
+            const times = document.createElement('div');
+            times.className = 'record-times';
+            if (r.day_off) {
+                times.textContent = '整天沒有打卡';
+            } else {
+                const out = r.log_out ? r.log_out.slice(0, 5) : null;
+                times.append(`上班 ${r.log_in.slice(0, 5)}　下班 `);
+                const outSpan = document.createElement('span');
+                outSpan.textContent = out || '尚未下班';
+                if (!out) outSpan.className = 'pending';
+                times.appendChild(outSpan);
+            }
+            li.appendChild(times);
+            recordList.appendChild(li);
         });
     }
 
@@ -212,7 +254,12 @@ async function loadNames() {
             const btn = document.createElement('button');
             btn.type = 'button';
             btn.className = 'btn btn-name';
-            btn.textContent = emp.name;
+            const avatar = document.createElement('span');
+            avatar.className = 'avatar';
+            avatar.textContent = [...emp.name][0];
+            const label = document.createElement('span');
+            label.textContent = emp.name;
+            btn.append(avatar, label);
             btn.addEventListener('click', () => openPunch(emp));
             nameGrid.appendChild(btn);
         });
@@ -225,6 +272,7 @@ let kioskPanel = null;
 function openPunch(emp) {
     punchName.textContent = emp.name;
     kioskPanel = createPanel(document.getElementById('kiosk-panel'), {
+        name: emp.name,
         load: () => HR.api(`/kiosk/records?userId=${emp.id}`, { kiosk: true }),
         punch: (type, punchType) =>
             HR.api('/kiosk/clock', {
@@ -295,39 +343,123 @@ window.onSessionExpired = () => {
     setMessage(loginError, '登入已過期，請重新登入。', 'error');
 };
 
-async function fetchTodayAttendance() {
+const statEls = {
+    staff: document.getElementById('stat-staff'),
+    punched: document.getElementById('stat-punched'),
+    working: document.getElementById('stat-working'),
+    absent: document.getElementById('stat-absent')
+};
+const onboarding = document.getElementById('onboarding');
+const absentCard = document.getElementById('absent-card');
+const absentList = document.getElementById('absent-list');
+
+async function loadDashboard() {
     try {
-        const { res, data } = await HR.api('/attendance/today');
-        if (!res.ok || !Array.isArray(data)) return;
+        const [att, emp] = await Promise.all([HR.api('/attendance/today'), HR.api('/employees')]);
+        if (!att.res.ok || !Array.isArray(att.data) || !emp.res.ok || !Array.isArray(emp.data)) return;
 
-        attendanceTbody.replaceChildren();
-        if (data.length === 0) {
-            const tr = document.createElement('tr');
-            const td = makeCell('今天還沒有人打卡', 'empty');
-            td.colSpan = 4;
-            tr.appendChild(td);
-            attendanceTbody.appendChild(tr);
-            return;
-        }
+        const rows = att.data;
+        const staff = emp.data.filter((u) => u.role === 'EMPLOYEE' && u.active);
+        const punchedIds = new Set(rows.map((r) => r.userId));
+        const workingIds = new Set(rows.filter((r) => !r.log_out).map((r) => r.userId));
+        const absent = staff.filter((u) => !punchedIds.has(u.id));
 
-        data.forEach((row) => {
-            const tr = document.createElement('tr');
-            tr.appendChild(makeCell(row.name));
+        statEls.staff.textContent = staff.length;
+        statEls.punched.textContent = staff.filter((u) => punchedIds.has(u.id)).length;
+        statEls.working.textContent = workingIds.size;
+        statEls.absent.textContent = absent.length;
 
-            const typeCell = document.createElement('td');
+        onboarding.hidden = staff.length > 0;
+
+        absentList.replaceChildren();
+        absentCard.hidden = absent.length === 0 || staff.length === 0;
+        absent.forEach((u) => {
             const tag = document.createElement('span');
-            tag.className = row.punch_type === '加班' ? 'tag tag-ot' : 'tag';
-            tag.textContent = row.punch_type;
-            typeCell.appendChild(tag);
-            tr.appendChild(typeCell);
-
-            tr.appendChild(makeCell(row.log_in));
-            tr.appendChild(makeCell(row.log_out || '--:--:--'));
-            attendanceTbody.appendChild(tr);
+            tag.className = 'tag tag-lg';
+            tag.textContent = u.name;
+            absentList.appendChild(tag);
         });
+
+        loadDay(dayInput.value || todayYmd());
     } catch (err) {
         console.error(err);
     }
+}
+
+// ---------- 出勤查詢（可選日期） ----------
+const dayInput = document.getElementById('day-input');
+const dayTitle = document.getElementById('day-title');
+const dayAbsent = document.getElementById('day-absent');
+const dayPrev = document.getElementById('day-prev');
+const dayNext = document.getElementById('day-next');
+const todayYmd = () => new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Taipei' }).format(new Date());
+
+function shiftDate(ymd, days) {
+    const [y, m, d] = ymd.split('-').map(Number);
+    const dt = new Date(Date.UTC(y, m - 1, d + days));
+    return dt.toISOString().slice(0, 10);
+}
+
+async function loadDay(date) {
+    const today = todayYmd();
+    dayInput.max = today;
+    dayInput.value = date;
+    dayNext.disabled = date >= today;
+
+    const { res, data } = await HR.api(`/attendance/day?date=${encodeURIComponent(date)}`);
+    if (!res.ok || !data) return;
+
+    dayTitle.textContent = data.is_today ? '今日出勤' : `${date} 出勤`;
+    renderAttendance(data.rows, data.is_today);
+
+    if (data.absent.length > 0) {
+        dayAbsent.textContent = `${data.is_today ? '今天尚未打卡' : '當天休假'}：${data.absent.join('、')}`;
+        dayAbsent.hidden = false;
+    } else {
+        dayAbsent.hidden = true;
+    }
+}
+
+dayInput.addEventListener('change', () => {
+    if (dayInput.value) loadDay(dayInput.value);
+});
+dayPrev.addEventListener('click', () => loadDay(shiftDate(dayInput.value || todayYmd(), -1)));
+dayNext.addEventListener('click', () => loadDay(shiftDate(dayInput.value || todayYmd(), 1)));
+document.getElementById('day-today').addEventListener('click', () => loadDay(todayYmd()));
+
+function renderAttendance(data, isToday) {
+    attendanceTbody.replaceChildren();
+    if (data.length === 0) {
+        const tr = document.createElement('tr');
+        const td = makeCell(isToday ? '今天還沒有人打卡' : '這一天沒有人打卡', 'empty');
+        td.colSpan = 4;
+        tr.appendChild(td);
+        attendanceTbody.appendChild(tr);
+        return;
+    }
+
+    data.forEach((row) => {
+        const tr = document.createElement('tr');
+        tr.appendChild(makeCell(row.name));
+
+        const typeCell = document.createElement('td');
+        const tag = document.createElement('span');
+        tag.className = row.punch_type === '加班' ? 'tag tag-ot' : 'tag';
+        tag.textContent = row.punch_type;
+        typeCell.appendChild(tag);
+        if (row.manual) {
+            const m = document.createElement('span');
+            m.className = 'tag tag-manual';
+            m.style.marginLeft = '6px';
+            m.textContent = '補登';
+            typeCell.appendChild(m);
+        }
+        tr.appendChild(typeCell);
+
+        tr.appendChild(makeCell(row.log_in));
+        tr.appendChild(makeCell(row.log_out || '尚未下班', row.log_out ? '' : 'pending'));
+        attendanceTbody.appendChild(tr);
+    });
 }
 
 // ======================================================================
@@ -346,7 +478,7 @@ function route() {
     if (HR.getToken() && user && user.role === 'ADMIN') {
         userNameDisplay.textContent = `${user.name}（管理員）`;
         showView('dashboard');
-        fetchTodayAttendance();
+        loadDashboard();
     } else if (HR.getKioskToken()) {
         showView('kiosk');
         loadNames();
