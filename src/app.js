@@ -15,6 +15,9 @@ const shiftRoutes = require('./routes/shiftRoutes');
 
 const app = express();
 
+// 位於 Tailscale Funnel 之後，信任一層 proxy 才能取得真實用戶 IP（rate limit 需要）
+app.set('trust proxy', 1);
+
 // Middlewares
 app.use(helmet());
 app.use(cors());
@@ -22,7 +25,10 @@ app.use(express.json());
 app.use(express.static(path.join(__dirname, '../public')));
 
 // Swagger API Docs
-app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerSpec));
+// 正式環境預設關閉；需要時於 .env 設定 ENABLE_API_DOCS=true
+if (process.env.NODE_ENV !== 'production' || process.env.ENABLE_API_DOCS === 'true') {
+    app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerSpec));
+}
 
 // Routes
 app.use('/api/auth', authRoutes);

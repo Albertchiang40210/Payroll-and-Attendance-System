@@ -44,7 +44,7 @@ docker-compose up -d --build
 容器啟動時會自動建立資料表。初次使用請建立管理員帳號：
 
 ```bash
-docker-compose exec punch_backend node prisma/seed.js
+docker-compose exec -e ADMIN_PASSWORD='你的密碼' punch_backend node prisma/seed.js
 ```
 
 服務位於 `http://localhost:${APP_PORT_EXTERNAL}`（預設 3001）。
@@ -55,11 +55,11 @@ docker-compose exec punch_backend node prisma/seed.js
 docker-compose up -d punch_db   # 只啟動資料庫（對外 port 為 DB_PORT_EXTERNAL，預設 3311）
 npm install
 npx prisma db push              # 建立資料表並產生 Prisma Client
-npm run seed                    # 建立管理員 admin / admin123
+ADMIN_PASSWORD='你的密碼' npm run seed   # 建立管理員 admin
 npm start                       # http://localhost:3001
 ```
 
-> `.env` 中 `DATABASE_URL` 的 port 需與 `DB_PORT_EXTERNAL` 相同。管理員預設密碼 `admin123` 僅供示範，請於實際使用前更改。
+> `.env` 中 `DATABASE_URL` 的 port 需與 `DB_PORT_EXTERNAL` 相同。管理員密碼由 `ADMIN_PASSWORD` 環境變數提供（至少 8 碼），專案不含預設密碼。正式環境（`NODE_ENV=production`）預設不開放 `/api-docs`，需要時在 `.env` 設定 `ENABLE_API_DOCS=true`。
 
 ## 🧪 測試
 
