@@ -1,8 +1,7 @@
 const crypto = require('crypto');
 const jwt = require('jsonwebtoken');
 const qrcode = require('qrcode-generator');
-const { PrismaClient } = require('@prisma/client');
-const prisma = new PrismaClient();
+const prisma = require('../utils/prisma');
 const catchAsync = require('../utils/catchAsync');
 const { performPunch, getRecentRecords } = require('../services/punchService');
 

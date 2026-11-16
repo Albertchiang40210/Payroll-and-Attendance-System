@@ -84,13 +84,13 @@ describe('Attendance API', () => {
 
     it('should report today\'s own punch state', async () => {
         const res = await request(app)
-            .get('/api/attendance/my-today')
+            .get('/api/attendance/my-records')
             .set('Authorization', `Bearer ${token}`);
 
         expect(res.statusCode).toEqual(200);
-        expect(res.body).toHaveLength(1);
-        expect(res.body[0].punch_type).toBe('正常');
-        expect(res.body[0].log_out).not.toBeNull();
+        expect(res.body.today).toHaveLength(1);
+        expect(res.body.today[0].punch_type).toBe('正常');
+        expect(res.body.today[0].log_out).not.toBeNull();
     });
 
     it('should block overtime clock out before overtime clock in', async () => {
@@ -160,5 +160,29 @@ describe('Health check', () => {
         const res = await request(app).get('/api/health');
         expect(res.statusCode).toEqual(200);
         expect(res.body).toEqual({ ok: true });
+    });
+});
+
+describe('Concurrent duplicate punches', () => {
+    beforeAll(async () => {
+        await prisma.attendance.deleteMany({ where: { userId } });
+    });
+
+    it('lets exactly one of several simultaneous clock-ins through', async () => {
+        const results = await Promise.all(
+            Array.from({ length: 6 }, () =>
+                request(app).post('/api/clock').set('Authorization', `Bearer ${token}`).send({ type: 'in' })
+            )
+        );
+        expect(results.filter((r) => r.statusCode === 200)).toHaveLength(1);
+        expect(results.filter((r) => r.statusCode === 400)).toHaveLength(5);
+        expect(await prisma.attendance.count({ where: { userId } })).toBe(1);
+    });
+
+    it('is enforced by the database itself, not only by application code', async () => {
+        const rec = await prisma.attendance.findFirst({ where: { userId } });
+        await expect(
+            prisma.attendance.create({ data: { userId, work_date: rec.work_date, punch_type: rec.punch_type } })
+        ).rejects.toMatchObject({ code: 'P2002' });
     });
 });

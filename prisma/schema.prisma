@@ -47,6 +47,11 @@ model Attendance {
 
   createdAt  DateTime  @default(now())
   updatedAt  DateTime  @updatedAt
+
+  // 同一人、同一天、同一班別只能有一筆（由資料庫保證，即使同時送出多個請求也不會重複）
+  @@unique([userId, work_date, punch_type])
+  // 薪資與出勤查詢依日期範圍搜尋
+  @@index([work_date])
 }
 
 model Leave {

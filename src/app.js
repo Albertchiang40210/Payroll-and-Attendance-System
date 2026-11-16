@@ -2,6 +2,7 @@ const express = require('express');
 const path = require('path');
 const cors = require('cors');
 const helmet = require('helmet');
+const compression = require('compression');
 const { swaggerUi, swaggerSpec } = require('./config/swagger');
 const errorHandler = require('./middlewares/errorHandler');
 
@@ -23,9 +24,15 @@ app.set('trust proxy', 1);
 
 // Middlewares
 app.use(helmet());
+app.use(compression()); // gzip：行動網路下載更快
 app.use(cors());
 app.use(express.json());
-app.use(express.static(path.join(__dirname, '../public')));
+app.use(express.static(path.join(__dirname, '../public'), {
+    // 圖片很少變動，可快取一天；JS/CSS/HTML 維持每次向伺服器確認（有更新就立刻拿到新版）
+    setHeaders: (res, filePath) => {
+        if (/\.(png|jpe?g|webp|ico)$/i.test(filePath)) res.setHeader('Cache-Control', 'public, max-age=86400');
+    }
+}));
 
 // Swagger API Docs
 // 正式環境預設關閉；需要時於 .env 設定 ENABLE_API_DOCS=true

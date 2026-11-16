@@ -175,3 +175,20 @@ describe('Deactivated employees', () => {
         expect(res.body.day_offs).toEqual([]);
     });
 });
+
+describe('Concurrent make-up punches', () => {
+    it('creates only one record when the same make-up is submitted at the same time', async () => {
+        await prisma.user.update({ where: { id: employee.id }, data: { active: true } });
+        const date = ymd(8);
+        const results = await Promise.all(
+            Array.from({ length: 4 }, () =>
+                asAdmin(request(app).post('/api/records')).send({
+                    userId: employee.id, work_date: date, clock_in: '09:00', clock_out: '13:00'
+                })
+            )
+        );
+        expect(results.filter((r) => r.statusCode === 200)).toHaveLength(1);
+        expect(results.filter((r) => r.statusCode === 400)).toHaveLength(3);
+        expect(await prisma.attendance.count({ where: { userId: employee.id, work_date: date } })).toBe(1);
+    });
+});

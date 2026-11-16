@@ -1,8 +1,7 @@
 const dayjs = require('dayjs');
 const utc = require('dayjs/plugin/utc');
 const timezone = require('dayjs/plugin/timezone');
-const { PrismaClient } = require('@prisma/client');
-const prisma = new PrismaClient();
+const prisma = require('../utils/prisma');
 const catchAsync = require('../utils/catchAsync');
 const { computeDayOffs } = require('../services/punchService');
 
@@ -90,13 +89,21 @@ exports.create = catchAsync(async (req, res) => {
     }
 
     const { clockIn, clockOut } = buildTimes(work_date, clock_in, clock_out);
-    const record = await prisma.attendance.create({
-        data: {
-            userId, work_date, punch_type,
-            clock_in: clockIn, clock_out: clockOut,
-            manual: true, note: note || null
+    let record;
+    try {
+        record = await prisma.attendance.create({
+            data: {
+                userId, work_date, punch_type,
+                clock_in: clockIn, clock_out: clockOut,
+                manual: true, note: note || null
+            }
+        });
+    } catch (err) {
+        if (err.code === 'P2002') {
+            throw httpError(400, `${user.name} 在 ${work_date} 已有【${punch_type}】紀錄，請改用「修改」。`);
         }
-    });
+        throw err;
+    }
     res.json({ message: `✅ 已補登 ${user.name} ${work_date} 的【${punch_type}】紀錄`, data: present(record) });
 });
 

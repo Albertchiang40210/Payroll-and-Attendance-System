@@ -1,5 +1,4 @@
-const { PrismaClient } = require('@prisma/client');
-const prisma = new PrismaClient();
+const prisma = require('../utils/prisma');
 const dayjs = require('dayjs');
 const utc = require('dayjs/plugin/utc');
 const timezone = require('dayjs/plugin/timezone');
@@ -43,9 +42,15 @@ exports.performPunch = async ({ userId, type, punchType = '正常', distance = n
         if (todaysRecord) {
             throw fail(`❌ 您今天已經打過【${punchType}】上班卡囉！`);
         }
-        await prisma.attendance.create({
-            data: { userId, work_date: today, punch_type: punchType, clock_in: now.toDate(), in_distance: distance }
-        });
+        try {
+            await prisma.attendance.create({
+                data: { userId, work_date: today, punch_type: punchType, clock_in: now.toDate(), in_distance: distance }
+            });
+        } catch (err) {
+            // 同時送出多個請求時，由資料庫的唯一限制擋下重複的那幾筆
+            if (err.code === 'P2002') throw fail(`❌ 您今天已經打過【${punchType}】上班卡囉！`);
+            throw err;
+        }
         return { time: timeString, message: `☀️ 【${punchType}】上班打卡成功！\n時間：${timeString}` };
     }
 
@@ -60,20 +65,6 @@ exports.performPunch = async ({ userId, type, punchType = '正常', distance = n
         data: { clock_out: now.toDate(), out_distance: distance }
     });
     return { time: timeString, message: `🌙 【${punchType}】下班打卡成功！\n時間：${timeString}` };
-};
-
-// 某員工今天的打卡紀錄（供畫面判斷哪些按鈕可按）
-exports.getTodayRecords = async (userId) => {
-    const today = getTaipeiTime().format('YYYY-MM-DD');
-    const records = await prisma.attendance.findMany({
-        where: { userId, work_date: today },
-        orderBy: { clock_in: 'asc' }
-    });
-    return records.map((a) => ({
-        punch_type: a.punch_type,
-        log_in: dayjs(a.clock_in).tz(TZ).format('HH:mm:ss'),
-        log_out: a.clock_out ? dayjs(a.clock_out).tz(TZ).format('HH:mm:ss') : null
-    }));
 };
 
 // 休假日：整天沒有任何打卡紀錄的日子。

@@ -1,5 +1,4 @@
-const { PrismaClient } = require('@prisma/client');
-const prisma = new PrismaClient();
+const prisma = require('../utils/prisma');
 const catchAsync = require('../utils/catchAsync');
 
 exports.createShift = catchAsync(async (req, res) => {
