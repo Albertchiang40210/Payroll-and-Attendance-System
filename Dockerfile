@@ -1,25 +1,27 @@
-# 使用輕量版 Node 基礎鏡像
-FROM node:20-slim
-
-# 設定容器內的工作目錄
+# 多階段建置：正式映像只包含執行所需的套件，並以一般使用者（非 root）執行
+FROM node:20-slim AS base
 WORKDIR /app
-
-# 先複製 package.json 和 package-lock.json (利用 Docker 快取機制優化編譯速度)
-COPY package*.json ./
-
-# 在編譯階段就直接把所有套件安裝好！
 RUN apt-get update && apt-get install -y --no-install-recommends openssl && rm -rf /var/lib/apt/lists/*
+# 先複製套件清單，利用 Docker 快取加速重複建置
+COPY package*.json ./
+ENV PRISMA_HIDE_UPDATE_MESSAGE=1 CHECKPOINT_DISABLE=1
+
+# ---------- 測試用映像：含開發套件（jest、supertest）----------
+FROM base AS test
 RUN npm ci
-
-# 複製其餘的所有原始碼檔案
 COPY . .
-
-# 產生 Prisma Client
 RUN npx prisma generate
+CMD ["sh", "-c", "npx prisma db push --skip-generate && npx jest --runInBand"]
 
-# 宣告容器內部監聽 3001 埠號
+# ---------- 正式映像 ----------
+FROM base AS prod
+ENV NODE_ENV=production
+RUN npm ci --omit=dev
+COPY . .
+RUN npx prisma generate \
+    && mkdir -p /app/logs \
+    && chown -R node:node /app/logs
+USER node
 EXPOSE 3001
-
-# 容器啟動時的指令
-# 啟動前先同步資料表結構
-CMD ["sh", "-c", "npx prisma db push && npm start"]
+# 容器啟動時先同步資料表結構，再啟動服務
+CMD ["sh", "-c", "npx prisma db push --skip-generate && npm start"]

@@ -14,7 +14,7 @@ chmod 700 "$BACKUP_DIR"
 OUT="$BACKUP_DIR/punch_db_$(date +%Y%m%d_%H%M%S).sql.gz"
 
 docker exec punch_mysql sh -c \
-  "mysqldump -uroot -p\"\$MYSQL_ROOT_PASSWORD\" --single-transaction --routines \"$MYSQL_DB_NAME\"" \
+  "MYSQL_PWD=\"\$MYSQL_ROOT_PASSWORD\" mysqldump -uroot --single-transaction --routines \"$MYSQL_DB_NAME\"" \
   | gzip > "$OUT"
 
 # 確認備份檔不是空的

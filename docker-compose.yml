@@ -21,7 +21,9 @@ services:
 
   # 2. Node.js 後端（僅綁定 127.0.0.1，外部流量經 Tailscale Funnel 轉入）
   punch_backend:
-    build: .
+    build:
+      context: .
+      target: prod
     container_name: punch_web_service
     restart: unless-stopped
     ports:
@@ -32,9 +34,19 @@ services:
       DATABASE_URL: mysql://root:${MYSQL_ROOT_PASS}@punch_db:3306/${MYSQL_DB_NAME}
       JWT_SECRET: ${JWT_SECRET}
       ENABLE_API_DOCS: ${ENABLE_API_DOCS:-false}
+    volumes:
+      - punch_logs:/app/logs # 錯誤日誌存在磁碟上，重新部署也不會消失
+    # 容器自己檢查網站與資料庫是否正常（docker ps 會顯示 healthy / unhealthy）
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:3001/api/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 40s
     depends_on:
       punch_db:
         condition: service_healthy
 
 volumes:
   punch_db_data:
+  punch_logs:
