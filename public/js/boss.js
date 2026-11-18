@@ -49,7 +49,7 @@ function emptyRow(colSpan, text) {
 const money = (n) => `$${Number(n).toLocaleString('zh-TW')}`;
 
 const personSelect = document.getElementById('person-select');
-const personRow = personSelect.parentElement;
+const personRow = personSelect.closest('.export-group'); // 沒有員工可選時整組隱藏
 
 let lastReport = null; // 目前顯示的月份資料，供匯出使用
 

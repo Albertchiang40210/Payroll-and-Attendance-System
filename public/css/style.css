@@ -423,6 +423,31 @@ summary {
     margin-top: 4px;
 }
 
+/* 薪資頁：下載區分成「全部員工」「單一員工」兩組，寬螢幕並排、窄螢幕自動換行 */
+.export-groups {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 16px 32px;
+    margin: 16px 0 12px;
+}
+.export-label {
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--muted);
+    margin-bottom: 6px;
+}
+.export-group .form-actions {
+    margin-top: 0;
+    flex-wrap: wrap;
+}
+.export-group select {
+    width: auto;
+    min-width: 130px;
+}
+.export-group .btn {
+    white-space: nowrap;
+}
+
 .hint {
     font-size: 13px;
     color: var(--muted);
