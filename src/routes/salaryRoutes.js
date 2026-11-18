@@ -7,5 +7,6 @@ router.use(protect);
 router.use(restrictTo('ADMIN'));
 
 router.get('/', salaryController.getSalaryReport);
+router.get('/export', salaryController.exportSalary);
 
 module.exports = router;

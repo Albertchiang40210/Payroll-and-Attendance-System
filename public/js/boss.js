@@ -49,11 +49,12 @@ function emptyRow(colSpan, text) {
 const money = (n) => `$${Number(n).toLocaleString('zh-TW')}`;
 
 const personSelect = document.getElementById('person-select');
+const incompleteBox = document.getElementById('incomplete-box');
 const personRow = personSelect.closest('.export-group'); // 沒有員工可選時整組隱藏
 
 let lastReport = null; // 目前顯示的月份資料，供匯出使用
 
-function render(month, summary, details) {
+function render(month, summary, details, incomplete) {
     lastReport = { month, summary, details };
     resultTitle.textContent = `${month.replace('-', ' 年 ')} 月薪資`;
     salaryTbody.replaceChildren();
@@ -102,6 +103,22 @@ function render(month, summary, details) {
         });
     }
 
+    // 只打上班卡、沒打下班卡的日子不會計薪，要讓老闆在轉交報表前看得到
+    incompleteBox.replaceChildren();
+    incompleteBox.hidden = incomplete.length === 0;
+    if (incomplete.length > 0) {
+        const head = document.createElement('strong');
+        head.textContent = `⚠ 有 ${incomplete.length} 筆只打了上班卡、沒打下班卡，未計入薪資（請到打卡紀錄補登後再重新計算）：`;
+        incompleteBox.appendChild(head);
+        const ul = document.createElement('ul');
+        incomplete.forEach((r) => {
+            const li = document.createElement('li');
+            li.textContent = `${r.name}　${r.work_date}　${r.punch_type}　${r.log_in} 上班`;
+            ul.appendChild(li);
+        });
+        incompleteBox.appendChild(ul);
+    }
+
     personSelect.replaceChildren();
     summary.forEach((s) => {
         const opt = document.createElement('option');
@@ -127,7 +144,7 @@ async function calculate() {
     try {
         const { res, data } = await HR.api(`/salary?month=${encodeURIComponent(month)}`);
         if (res.ok && data && Array.isArray(data.summary)) {
-            render(month, data.summary, data.details || []);
+            render(month, data.summary, data.details || [], data.incomplete || []);
         } else if (res.status !== 401) {
             resultCard.hidden = true;
             errorBox.textContent = HR.errorText(data, '薪資計算失敗');
@@ -154,30 +171,6 @@ calcBtn.addEventListener('click', calculate);
 monthInput.addEventListener('change', calculate);
 calculate();
 
-// ---------- 匯出 Excel（CSV） ----------
-document.getElementById('export-summary').addEventListener('click', () => {
-    if (!lastReport) return;
-    const { month, summary } = lastReport;
-    const total = summary.reduce((sum, s) => sum + s.total_salary, 0);
-    CSV.download(`薪資彙總_${month}.csv`, [
-        ['員工', '時薪', '總工時（小時）', '休假天數', '應發薪資'],
-        ...summary.map((s) => [s.name, s.hourly_rate, s.total_hours, s.day_off_count || 0, s.total_salary]),
-        ['合計', '', '', '', total]
-    ]);
-});
-
-document.getElementById('export-details').addEventListener('click', () => {
-    if (!lastReport) return;
-    const { month, details } = lastReport;
-    CSV.download(`每日明細_${month}.csv`, [
-        ['日期', '姓名', '類型', '上班', '下班', '工時（小時）', '金額', '補登'],
-        ...details.map((d) => [
-            d.work_date, d.name, d.punch_type, d.day_off ? '' : d.log_in, d.day_off ? '' : d.log_out,
-            d.day_hours, d.earned, d.manual ? '是' : ''
-        ])
-    ]);
-});
-
 // 單一員工的整月明細：依日期由前到後排列，最後附上合計
 document.getElementById('export-person').addEventListener('click', () => {
     if (!lastReport) return;
@@ -197,3 +190,48 @@ document.getElementById('export-person').addEventListener('click', () => {
         ['合計', '', '', '', person.total_hours, person.total_salary, '']
     ]);
 });
+
+// ---------- 下載 Excel（由伺服器產生 .xlsx） ----------
+const EXCEL_NAMES = { payroll: '應發薪資', details: '每人打卡明細' };
+
+async function downloadExcel(type, button) {
+    const month = (lastReport && lastReport.month) || monthInput.value;
+    if (!month) return;
+    errorBox.hidden = true;
+    button.disabled = true;
+    try {
+        const res = await fetch(`/api/salary/export?month=${encodeURIComponent(month)}&type=${type}`, {
+            headers: { Authorization: `Bearer ${HR.getToken()}` }
+        });
+        if (res.status === 401) {
+            HR.clearSession();
+            window.onSessionExpired();
+            return;
+        }
+        if (!res.ok) {
+            let data = null;
+            try { data = await res.json(); } catch (e) { data = null; }
+            errorBox.textContent = HR.errorText(data, '下載失敗');
+            errorBox.hidden = false;
+            return;
+        }
+        const url = URL.createObjectURL(await res.blob());
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `${EXCEL_NAMES[type]}_${month}.xlsx`;
+        document.body.appendChild(a);
+        a.click();
+        a.remove();
+        setTimeout(() => URL.revokeObjectURL(url), 1000);
+    } catch (err) {
+        errorBox.textContent = '連線失敗，請稍後再試。';
+        errorBox.hidden = false;
+    } finally {
+        button.disabled = false;
+    }
+}
+
+const payrollBtn = document.getElementById('export-payroll');
+const detailsBtn = document.getElementById('export-all-details');
+payrollBtn.addEventListener('click', () => downloadExcel('payroll', payrollBtn));
+detailsBtn.addEventListener('click', () => downloadExcel('details', detailsBtn));

@@ -40,7 +40,7 @@
 - **員工手機與位置**：為員工產生登記 QR Code（可用 LINE 傳連結）、查看與解除各員工手機、設定店的位置與允許範圍。
 - **補打卡**：替員工補登、修改、刪除出勤紀錄（不可補未來時間、下班需晚於上班），補登紀錄會標記並可附備註。
 - **休假**：整天沒有任何打卡紀錄的日子**自動列為休假**（只算到昨天、到職日之後、在職員工），顯示於員工紀錄、薪資與當日查詢。
-- **薪資核算**：依月份彙整每位員工工時、休假天數與薪資，附每日明細，並可**匯出 Excel（CSV）**。一律按「工時 × 時薪」計算，加班與正常班相同，不另加成（可依需求調整）。
+- **薪資核算**：依月份彙整每位員工工時、休假天數與薪資，附每日明細，並可下載兩份 **Excel（.xlsx）**：「應發薪資」與「每人打卡明細」（每位員工一個分頁）。只打了上班卡、沒打下班卡的日子不計薪，會在畫面與報表中明確標出。一律按「工時 × 時薪」計算，加班與正常班相同，不另加成（可依需求調整）。
 
 ### 其他
 
@@ -88,7 +88,7 @@ flowchart LR
 | 單純的 API | routes / controllers / middlewares / services / validations 分層；打卡邏輯抽成 `punchService`，登入者與員工手機**共用同一套規則** |
 | 手寫 SQL／直接存取 | Prisma ORM（型別安全、`db push` 自動同步資料表） |
 | 輸入驗證分散 | Zod 在入口統一驗證，錯誤回傳欄位級訊息 |
-| 無自動測試 | Jest + Supertest，**117 個測試**，GitHub Actions 起 MySQL 服務執行 |
+| 無自動測試 | Jest + Supertest，**127 個測試**，GitHub Actions 起 MySQL 服務執行 |
 
 ### 2. 安全強化
 
@@ -163,7 +163,7 @@ V6  定位驗證                            → 人不在店裡也無法打卡
 
 ### 8. 測試策略
 
-- **117 個測試**涵蓋：打卡規則與並行重複打卡、加班前置、休假計算、**薪資金額**（四捨五入、加班不加成、未下班與跨月不計、**調整時薪不影響過去月份**）、CSV 匯出、補打卡、一次性登記碼（時效、次數、並行搶名額）、手機只能替自己打卡、換手機／解除／停用、定位驗證（過遠、不準、未開定位）、員工刪除保護、健康檢查。
+- **127 個測試**涵蓋：打卡規則與並行重複打卡、加班前置、休假計算、**薪資金額**（四捨五入、加班不加成、未下班與跨月不計、**調整時薪不影響過去月份**）、Excel 報表內容與下載、CSV 匯出、補打卡、一次性登記碼（時效、次數、並行搶名額）、手機只能替自己打卡、換手機／解除／停用、定位驗證（過遠、不準、未開定位）、員工刪除保護、健康檢查。
 - **只在獨立資料庫執行**：`scripts/test.sh` 會建立暫時資料庫、以測試用映像執行、結束後自動刪除，絕不碰正式資料。
 - 前端以**實際執行頁面的 JavaScript**（jsdom）驗證各身分的畫面，而不是只看伺服器回 200：曾因移除一個畫面元素卻漏改程式導致整頁空白，這類錯誤只有真的執行頁面才抓得到。
 
@@ -318,7 +318,7 @@ scripts/test.sh
 > 不使用 Docker 時，也可自行指向獨立資料庫：
 > `DATABASE_URL="mysql://root:<密碼>@localhost:3311/punch_test" JWT_SECRET=test npx prisma db push && npm test`（請務必確認不是正式資料庫）
 
-測試設定為依序執行（`--runInBand`），共 **117 個**：
+測試設定為依序執行（`--runInBand`），共 **127 個**：
 
 | 檔案 | 數量 | 涵蓋 |
 | :--- | :---: | :--- |
@@ -326,7 +326,8 @@ scripts/test.sh
 | `tests/records.test.js` | 20 | 補打卡的權限、驗證、新增／修改／刪除與休假連動、並行補登 |
 | `tests/attendance.test.js` | 15 | 基本打卡流程、加班前置、下班需有上班、並行重複打卡、資料庫唯一限制、健康檢查 |
 | `tests/dayoff.test.js` | 13 | 休假計算（到職日、今天、離職）、薪資休假天數、指定日期查詢 |
-| `tests/salary.test.js` | 13 | 薪資金額：四捨五入、加班不加成、未下班與跨月不計、補登標記、時薪 0；調整時薪不影響過去月份、月中調薪依日期套用、重複儲存不產生多餘紀錄、刪除員工連動刪除時薪歷史 |
+| `tests/salary.test.js` | 14 | 薪資金額：四捨五入、加班不加成、未下班與跨月不計、補登標記、時薪 0、未打下班卡會被列出；調整時薪不影響過去月份、月中調薪依日期套用、重複儲存不產生多餘紀錄、刪除員工連動刪除時薪歷史 |
+| `tests/export.test.js` | 9 | Excel 報表：下載權限與格式驗證、真實 .xlsx 檔、應發薪資與每人明細內容（金額與彙總一致、未打下班卡標示、月中調薪註記、分頁名稱合法且不重複） |
 | `tests/csv.test.js` | 6 | Excel 匯出（BOM、跳脫、防止試算表公式注入） |
 
 ---
@@ -347,7 +348,8 @@ scripts/test.sh
 | 打卡 | POST | `/api/clock` | 登入者打卡（`type`、`punch_type`） | 登入者 |
 | 補打卡 | GET / POST | `/api/records` | 某員工某月紀錄（含休假日）/ 補登 | ADMIN |
 | 補打卡 | PUT / DELETE | `/api/records/:id` | 修改 / 刪除一筆紀錄 | ADMIN |
-| 薪資 | GET | `/api/salary?month=YYYY-MM` | 月薪資彙總與每日明細 | ADMIN |
+| 薪資 | GET | `/api/salary?month=YYYY-MM` | 月薪資彙總、每日明細、未打下班卡清單 | ADMIN |
+| 薪資 | GET | `/api/salary/export?month=YYYY-MM&type=payroll\|details` | 下載 Excel：應發薪資 / 每人打卡明細 | ADMIN |
 | 手機 | POST | `/api/kiosk/pair` | 以專屬 QR Code 通行碼綁定手機、取得裝置 token | 公開（限流） |
 | 手機 | GET | `/api/kiosk/me`、`/api/kiosk/records` | 這支手機的主人／其最近紀錄 | 裝置 token |
 | 手機 | POST | `/api/kiosk/clock` | 替綁定的員工打卡（`type`、`punch_type`、`location`） | 裝置 token |
@@ -391,7 +393,7 @@ src/
 prisma/                     schema.prisma、seed.js
 public/                     前端頁面（index、employees、qrcode、attendance、boss）、css、js（含 csv.js）、img（店標與主畫面圖示）、manifest
 scripts/                    backup.sh（備份）、healthcheck.sh（健康監控）、test.sh（在暫時資料庫跑全部測試）
-tests/                      Jest + Supertest（6 個檔案、117 個測試）
+tests/                      Jest + Supertest（7 個檔案、127 個測試）
 .github/workflows/          CI
 ```
 

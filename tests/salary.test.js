@@ -130,6 +130,14 @@ describe('Salary report', () => {
         expect(apr.total_salary).toBe(1520);
     });
 
+    it('lists past days with a clock-in but no clock-out instead of silently dropping them', async () => {
+        const body = (await get('2026-03')).body;
+        expect(body.incomplete).toEqual([
+            expect.objectContaining({ name: '愛麗絲', work_date: '2026-03-04', punch_type: '正常', log_in: '09:00:00' })
+        ]);
+        expect((await get('2026-02')).body.incomplete).toEqual([]);
+    });
+
     it('does not change past months when the hourly rate is raised', async () => {
         const before = (await get('2026-03')).body.summary.find((s) => s.name === '愛麗絲');
         expect(before.total_salary).toBe(3008);   // 1615 + 633 + 380 + 380（時薪 190）
