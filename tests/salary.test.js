@@ -29,6 +29,7 @@ async function shift(userId, date, inTime, outTime, punch_type = '正常', extra
 }
 
 async function cleanup() {
+    await prisma.rateHistory.deleteMany();
     await prisma.attendance.deleteMany();
     await prisma.pairingCode.deleteMany();
     await prisma.setting.deleteMany();
@@ -129,10 +130,76 @@ describe('Salary report', () => {
         expect(apr.total_salary).toBe(1520);
     });
 
-    it('applies the current hourly rate when it is changed', async () => {
-        await prisma.user.update({ where: { id: alice.id }, data: { hourly_rate: 200 } });
-        const row = (await get('2026-03')).body.summary.find((s) => s.name === '愛麗絲');
-        // 8.5×200 + 3.3333×200 + 2×200 + 2×200 = 1700 + 667 + 400 + 400
-        expect(row.total_salary).toBe(3167);
+    it('does not change past months when the hourly rate is raised', async () => {
+        const before = (await get('2026-03')).body.summary.find((s) => s.name === '愛麗絲');
+        expect(before.total_salary).toBe(3008);   // 1615 + 633 + 380 + 380（時薪 190）
+
+        const res = await request(app).put(`/api/employees/${alice.id}`)
+            .set('Authorization', `Bearer ${adminToken}`).send({ hourly_rate: 200 });
+        expect(res.statusCode).toEqual(200);
+
+        const after = (await get('2026-03')).body.summary.find((s) => s.name === '愛麗絲');
+        expect(after.total_salary).toBe(3008);    // 過去月份不變
+        expect(after.hourly_rate).toBe(190);
+        expect(after.rate_changed).toBe(false);
+        const feb = (await get('2026-02')).body.summary.find((s) => s.name === '愛麗絲');
+        expect(feb.total_salary).toBe(1520);
+    });
+
+    it('keeps one history row per day and ignores saves that do not change the rate', async () => {
+        const put = (body) => request(app).put(`/api/employees/${alice.id}`)
+            .set('Authorization', `Bearer ${adminToken}`).send(body);
+        // 第一次調整：調整前的時薪 + 今天起的新時薪，共兩筆
+        expect(await prisma.rateHistory.count({ where: { userId: alice.id } })).toBe(2);
+
+        await put({ name: '愛麗絲', hourly_rate: 200 });   // 時薪沒變
+        await put({ name: '愛麗絲 B' });                     // 沒帶時薪
+        expect(await prisma.rateHistory.count({ where: { userId: alice.id } })).toBe(2);
+
+        await put({ hourly_rate: 210 });                     // 同一天再調：更新今天那筆，不新增
+        const rows = await prisma.rateHistory.findMany({ where: { userId: alice.id }, orderBy: { effective_from: 'asc' } });
+        expect(rows.map((r) => r.hourly_rate)).toEqual([190, 210]);
+        expect(rows[0].effective_from).toBe('1970-01-01');
+        expect(rows[1].effective_from).toBe(dayjs().tz(TZ).format('YYYY-MM-DD'));
+    });
+
+    it('applies the rate in effect on each day, and flags a mid-month change', async () => {
+        const hashed = await bcrypt.hash('password123', 10);
+        const carol = await prisma.user.create({
+            data: { username: 'carol', password: hashed, name: '卡蘿', role: 'EMPLOYEE', hourly_rate: 150 }
+        });
+        await prisma.rateHistory.createMany({
+            data: [
+                { userId: carol.id, effective_from: '1970-01-01', hourly_rate: 100 },
+                { userId: carol.id, effective_from: '2026-05-16', hourly_rate: 150 }
+            ]
+        });
+        await shift(carol.id, '2026-05-15', '09:00', '11:00');   // 調薪前：2 小時 × 100
+        await shift(carol.id, '2026-05-16', '09:00', '11:00');   // 調薪當天起：2 小時 × 150
+        await shift(carol.id, '2026-06-01', '09:00', '11:00');   // 下個月全部是新時薪
+
+        const may = (await get('2026-05')).body;
+        const row = may.summary.find((s) => s.name === '卡蘿');
+        expect(row.total_salary).toBe(500);
+        expect(row.hourly_rate).toBe(150);       // 彙總顯示月底時薪
+        expect(row.rate_changed).toBe(true);
+        const earned = Object.fromEntries(may.details.filter((d) => d.name === '卡蘿').map((d) => [d.work_date, d.earned]));
+        expect(earned).toEqual({ '2026-05-15': 200, '2026-05-16': 300 });
+
+        const jun = (await get('2026-06')).body.summary.find((s) => s.name === '卡蘿');
+        expect(jun.total_salary).toBe(300);
+        expect(jun.rate_changed).toBe(false);
+    });
+
+    it('still works after deleting an employee who has a rate history', async () => {
+        const created = await request(app).post('/api/employees')
+            .set('Authorization', `Bearer ${adminToken}`).send({ name: '要刪除的人', hourly_rate: 100 });
+        const id = created.body.data.id;
+        await request(app).put(`/api/employees/${id}`).set('Authorization', `Bearer ${adminToken}`).send({ hourly_rate: 120 });
+        expect(await prisma.rateHistory.count({ where: { userId: id } })).toBe(2);
+
+        const del = await request(app).delete(`/api/employees/${id}`).set('Authorization', `Bearer ${adminToken}`);
+        expect(del.statusCode).toEqual(200);
+        expect(await prisma.rateHistory.count({ where: { userId: id } })).toBe(0);
     });
 });

@@ -4,6 +4,7 @@ const dayjs = require('dayjs');
 const utc = require('dayjs/plugin/utc');
 const timezone = require('dayjs/plugin/timezone');
 const { computeDayOffs } = require('../services/punchService');
+const { buildRateLookup } = require('../services/rateService');
 
 dayjs.extend(utc);
 dayjs.extend(timezone);
@@ -37,6 +38,9 @@ exports.getSalaryReport = catchAsync(async (req, res) => {
         ]
     });
     
+    // 每一筆依「打卡日期」套用當時生效的時薪（調整時薪不會影響過去的紀錄）
+    const rateOn = await buildRateLookup();
+
     // 逐筆計算工時與薪資
     const summaryMap = {};
     const details = [];
@@ -50,7 +54,8 @@ exports.getSalaryReport = catchAsync(async (req, res) => {
         const dayHours = diffMinutes / 60;
         
         // 一律按時薪 × 工時計算（含加班，不加成）
-        let calculatedSalaryForDay = dayHours * user.hourly_rate;
+        const rate = rateOn(userId, a.work_date, user.hourly_rate);
+        let calculatedSalaryForDay = dayHours * rate;
         
         calculatedSalaryForDay = Math.round(calculatedSalaryForDay);
         
@@ -66,14 +71,18 @@ exports.getSalaryReport = catchAsync(async (req, res) => {
             manual: a.manual
         });
         
+        // 明細由新到舊排序，第一筆就是當月最後一天的時薪；月中調過時薪則標記提示
         if (!summaryMap[userId]) {
             summaryMap[userId] = {
                 emp_id: userId,
                 name: user.name,
-                hourly_rate: user.hourly_rate,
+                hourly_rate: rate,
+                rate_changed: false,
                 total_hours: 0,
                 total_salary: 0
             };
+        } else if (summaryMap[userId].hourly_rate !== rate) {
+            summaryMap[userId].rate_changed = true;
         }
         
         summaryMap[userId].total_hours += dayHours;
@@ -117,7 +126,8 @@ exports.getSalaryReport = catchAsync(async (req, res) => {
         // 整個月都沒有打卡紀錄的員工也要出現在彙總表
         if (!summaryMap[u.id] && u.createdAt && dayOffs.length > 0) {
             summaryMap[u.id] = {
-                emp_id: u.id, name: u.name, hourly_rate: u.hourly_rate, total_hours: 0, total_salary: 0
+                emp_id: u.id, name: u.name, hourly_rate: rateOn(u.id, monthEnd, u.hourly_rate), rate_changed: false,
+                total_hours: 0, total_salary: 0
             };
         }
     });

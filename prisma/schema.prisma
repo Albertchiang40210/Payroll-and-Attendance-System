@@ -22,6 +22,7 @@ model User {
   shifts      Shift[]
   devices     Device[]
   pairingCodes PairingCode[]
+  rates       RateHistory[]
 
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
@@ -52,6 +53,19 @@ model Attendance {
   @@unique([userId, work_date, punch_type])
   // 薪資與出勤查詢依日期範圍搜尋
   @@index([work_date])
+}
+
+// 時薪調整歷史：每筆打卡依「打卡日期」套用當時生效的時薪，調整時薪不會影響過去月份
+model RateHistory {
+  id             Int      @id @default(autoincrement())
+  userId         Int
+  user           User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  effective_from String   // 從這一天（含）起適用，格式 YYYY-MM-DD；第一次調整時會補一筆 1970-01-01 記錄調整前的時薪
+  hourly_rate    Float
+
+  createdAt      DateTime @default(now())
+
+  @@unique([userId, effective_from])
 }
 
 model Leave {

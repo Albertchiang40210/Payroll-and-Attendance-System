@@ -2,6 +2,8 @@ const prisma = require('../utils/prisma');
 const bcrypt = require('bcrypt');
 const crypto = require('crypto');
 const catchAsync = require('../utils/catchAsync');
+const { getTaipeiTime } = require('../services/punchService');
+const { recordRateChange } = require('../services/rateService');
 
 exports.getAllEmployees = catchAsync(async (req, res) => {
     const users = await prisma.user.findMany({
@@ -61,15 +63,23 @@ exports.createEmployee = catchAsync(async (req, res) => {
 });
 
 exports.updateEmployee = catchAsync(async (req, res) => {
-    const { id } = req.params;
+    const id = parseInt(req.params.id);
     const { name, hourly_rate, active, punch } = req.body;
-    
-    const updatedUser = await prisma.user.update({
-        where: { id: parseInt(id) },
-        data: { name, hourly_rate, active, punch },
-        select: { id: true, name: true, hourly_rate: true, active: true, punch: true }
+
+    // 時薪有變動時，記下「從今天起」的新時薪；過去的打卡仍按當時的時薪計算
+    const updatedUser = await prisma.$transaction(async (tx) => {
+        const current = await tx.user.findUnique({ where: { id }, select: { hourly_rate: true } });
+        const user = await tx.user.update({
+            where: { id },
+            data: { name, hourly_rate, active, punch },
+            select: { id: true, name: true, hourly_rate: true, active: true, punch: true }
+        });
+        if (current && hourly_rate !== undefined && hourly_rate !== current.hourly_rate) {
+            await recordRateChange(tx, id, current.hourly_rate, hourly_rate, getTaipeiTime().format('YYYY-MM-DD'));
+        }
+        return user;
     });
-    
+
     res.json({ message: '✏️ 員工資料修改成功！', data: updatedUser });
 });
 

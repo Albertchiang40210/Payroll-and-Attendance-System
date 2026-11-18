@@ -70,7 +70,7 @@ function render(month, summary, details) {
             const name = cell(s.name);
             name.style.fontWeight = '600';
             tr.appendChild(name);
-            tr.appendChild(cell(money(s.hourly_rate), 'num'));
+            tr.appendChild(cell(s.rate_changed ? `${money(s.hourly_rate)}（月中調薪）` : money(s.hourly_rate), 'num'));
             tr.appendChild(cell(`${s.total_hours} 小時`, 'num'));
             tr.appendChild(cell(`${s.day_off_count || 0} 天`, 'num'));
             tr.appendChild(cell(money(s.total_salary), 'num salary'));

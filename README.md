@@ -88,7 +88,7 @@ flowchart LR
 | 單純的 API | routes / controllers / middlewares / services / validations 分層；打卡邏輯抽成 `punchService`，登入者與員工手機**共用同一套規則** |
 | 手寫 SQL／直接存取 | Prisma ORM（型別安全、`db push` 自動同步資料表） |
 | 輸入驗證分散 | Zod 在入口統一驗證，錯誤回傳欄位級訊息 |
-| 無自動測試 | Jest + Supertest，**114 個測試**，GitHub Actions 起 MySQL 服務執行 |
+| 無自動測試 | Jest + Supertest，**117 個測試**，GitHub Actions 起 MySQL 服務執行 |
 
 ### 2. 安全強化
 
@@ -163,7 +163,7 @@ V6  定位驗證                            → 人不在店裡也無法打卡
 
 ### 8. 測試策略
 
-- **114 個測試**涵蓋：打卡規則與並行重複打卡、加班前置、休假計算、**薪資金額**（四捨五入、加班不加成、未下班與跨月不計、時薪調整）、CSV 匯出、補打卡、一次性登記碼（時效、次數、並行搶名額）、手機只能替自己打卡、換手機／解除／停用、定位驗證（過遠、不準、未開定位）、員工刪除保護、健康檢查。
+- **117 個測試**涵蓋：打卡規則與並行重複打卡、加班前置、休假計算、**薪資金額**（四捨五入、加班不加成、未下班與跨月不計、**調整時薪不影響過去月份**）、CSV 匯出、補打卡、一次性登記碼（時效、次數、並行搶名額）、手機只能替自己打卡、換手機／解除／停用、定位驗證（過遠、不準、未開定位）、員工刪除保護、健康檢查。
 - **只在獨立資料庫執行**：`scripts/test.sh` 會建立暫時資料庫、以測試用映像執行、結束後自動刪除，絕不碰正式資料。
 - 前端以**實際執行頁面的 JavaScript**（jsdom）驗證各身分的畫面，而不是只看伺服器回 200：曾因移除一個畫面元素卻漏改程式導致整頁空白，這類錯誤只有真的執行頁面才抓得到。
 
@@ -318,7 +318,7 @@ scripts/test.sh
 > 不使用 Docker 時，也可自行指向獨立資料庫：
 > `DATABASE_URL="mysql://root:<密碼>@localhost:3311/punch_test" JWT_SECRET=test npx prisma db push && npm test`（請務必確認不是正式資料庫）
 
-測試設定為依序執行（`--runInBand`），共 **114 個**：
+測試設定為依序執行（`--runInBand`），共 **117 個**：
 
 | 檔案 | 數量 | 涵蓋 |
 | :--- | :---: | :--- |
@@ -326,7 +326,7 @@ scripts/test.sh
 | `tests/records.test.js` | 20 | 補打卡的權限、驗證、新增／修改／刪除與休假連動、並行補登 |
 | `tests/attendance.test.js` | 15 | 基本打卡流程、加班前置、下班需有上班、並行重複打卡、資料庫唯一限制、健康檢查 |
 | `tests/dayoff.test.js` | 13 | 休假計算（到職日、今天、離職）、薪資休假天數、指定日期查詢 |
-| `tests/salary.test.js` | 10 | 薪資金額：四捨五入、加班不加成、未下班與跨月不計、補登標記、時薪調整、時薪 0 |
+| `tests/salary.test.js` | 13 | 薪資金額：四捨五入、加班不加成、未下班與跨月不計、補登標記、時薪 0；調整時薪不影響過去月份、月中調薪依日期套用、重複儲存不產生多餘紀錄、刪除員工連動刪除時薪歷史 |
 | `tests/csv.test.js` | 6 | Excel 匯出（BOM、跳脫、防止試算表公式注入） |
 
 ---
@@ -367,6 +367,7 @@ scripts/test.sh
 | 資料表 | 用途 |
 | :--- | :--- |
 | `User` | 員工與管理員；`role`、`hourly_rate`、`active`（在職）、`punch`（是否需要打卡） |
+| `RateHistory` | 時薪調整歷史：每筆打卡依「打卡日期」套用當時的時薪，調整時薪不會改變過去月份的薪資 |
 | `Attendance` | 打卡紀錄：日期、班別、上下班時間、`manual`（補登）、`note`、`in_distance` / `out_distance`（離店距離） |
 | `Device` | 已登記的員工手機（一位員工一支），刪除員工時連動刪除 |
 | `PairingCode` | 一次性登記碼：綁定某員工、有效期限、次數上限 |
@@ -390,7 +391,7 @@ src/
 prisma/                     schema.prisma、seed.js
 public/                     前端頁面（index、employees、qrcode、attendance、boss）、css、js（含 csv.js）、img（店標與主畫面圖示）、manifest
 scripts/                    backup.sh（備份）、healthcheck.sh（健康監控）、test.sh（在暫時資料庫跑全部測試）
-tests/                      Jest + Supertest（6 個檔案、114 個測試）
+tests/                      Jest + Supertest（6 個檔案、117 個測試）
 .github/workflows/          CI
 ```
 
