@@ -21,9 +21,8 @@ services:
 
   # 2. Node.js 後端（僅綁定 127.0.0.1，外部流量經 Tailscale Funnel 轉入）
   punch_backend:
-    build:
-      context: .
-      target: prod
+    # 映像檔由 GitHub Actions 建置並推到 GHCR；回滾時把 IMAGE_TAG 設成 sha-xxxxxxx
+    image: ghcr.io/albertchiang40210/payroll-and-attendance-system:${IMAGE_TAG:-latest}
     container_name: punch_web_service
     restart: unless-stopped
     ports:
