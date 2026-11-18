@@ -48,6 +48,9 @@ function emptyRow(colSpan, text) {
 
 const money = (n) => `$${Number(n).toLocaleString('zh-TW')}`;
 
+const personSelect = document.getElementById('person-select');
+const personRow = personSelect.parentElement;
+
 let lastReport = null; // 目前顯示的月份資料，供匯出使用
 
 function render(month, summary, details) {
@@ -98,6 +101,15 @@ function render(month, summary, details) {
             detailTbody.appendChild(tr);
         });
     }
+
+    personSelect.replaceChildren();
+    summary.forEach((s) => {
+        const opt = document.createElement('option');
+        opt.value = s.emp_id;
+        opt.textContent = s.name;
+        personSelect.appendChild(opt);
+    });
+    personRow.hidden = summary.length === 0;
 
     resultCard.hidden = false;
 }
@@ -163,5 +175,25 @@ document.getElementById('export-details').addEventListener('click', () => {
             d.work_date, d.name, d.punch_type, d.day_off ? '' : d.log_in, d.day_off ? '' : d.log_out,
             d.day_hours, d.earned, d.manual ? '是' : ''
         ])
+    ]);
+});
+
+// 單一員工的整月明細：依日期由前到後排列，最後附上合計
+document.getElementById('export-person').addEventListener('click', () => {
+    if (!lastReport) return;
+    const { month, summary, details } = lastReport;
+    const empId = Number(personSelect.value);
+    const person = summary.find((s) => s.emp_id === empId);
+    if (!person) return;
+    const rows = details
+        .filter((d) => d.emp_id === empId)
+        .sort((a, b) => (a.work_date === b.work_date ? 0 : a.work_date < b.work_date ? -1 : 1));
+    CSV.download(`${person.name}_${month}_明細.csv`, [
+        ['日期', '類型', '上班', '下班', '工時（小時）', '金額', '補登'],
+        ...rows.map((d) => [
+            d.work_date, d.punch_type, d.day_off ? '' : d.log_in, d.day_off ? '' : d.log_out,
+            d.day_hours, d.earned, d.manual ? '是' : ''
+        ]),
+        ['合計', '', '', '', person.total_hours, person.total_salary, '']
     ]);
 });

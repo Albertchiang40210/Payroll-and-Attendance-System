@@ -55,6 +55,7 @@ exports.getSalaryReport = catchAsync(async (req, res) => {
         calculatedSalaryForDay = Math.round(calculatedSalaryForDay);
         
         details.push({
+            emp_id: userId,
             work_date: a.work_date,
             name: user.name,
             punch_type: a.punch_type,
@@ -108,7 +109,7 @@ exports.getSalaryReport = catchAsync(async (req, res) => {
         dayOffCount[u.id] = dayOffs.length;
         dayOffs.forEach((d) =>
             details.push({
-                work_date: d, name: u.name, punch_type: '休假',
+                emp_id: u.id, work_date: d, name: u.name, punch_type: '休假',
                 log_in: null, log_out: null, day_hours: '0.00', earned: 0, day_off: true
             })
         );
