@@ -186,8 +186,30 @@ V6  定位驗證                            → 人不在店裡也無法打卡
 
 ## 🛠️ 技術棧
 
-| 類別 | 使用 |
-| :--- | :--- |
+| 類別 | 使用 | 用途 |
+| :--- | :--- | :--- |
+| 執行環境 | Node.js 20 | 後端執行環境 |
+| 後端框架 | Express 5 | routes / controllers / middlewares / services 分層 |
+| 資料庫 | MySQL 8、mysql2 | 儲存員工、打卡、時薪歷史等資料 |
+| ORM | Prisma 5 | 定義資料表（schema）、查詢資料庫 |
+| 驗證 | Zod 4 | 檢查 API 請求的格式 |
+| 登入與安全 | JWT、bcrypt、helmet（CSP）、cors、express-rate-limit | 老闆登入、密碼雜湊、安全標頭、跨來源限制、限制請求頻率 |
+| 日誌 | Winston、winston-daily-rotate-file | 記錄執行狀況，每日輪替檔案 |
+| 報表 | write-excel-file | 產生薪資 Excel（.xlsx） |
+| QR Code | qrcode-generator | 伺服器端產生員工登記用 QR Code |
+| 其他套件 | dayjs、dotenv、compression、swagger-ui-express | 時區與日期、讀取環境變數、回應壓縮、API 文件（正式環境關閉） |
+| 前端 | 原生 HTML / CSS / JS | 手機優先、淺色簡潔，不使用框架；含 PWA manifest |
+| 測試 | Jest、Supertest | 單元與 API 整合測試 |
+| CI | GitHub Actions（含 MySQL service） | 推上 GitHub 時自動跑測試 |
+| 容器 | Docker、Docker Compose | 後端與 MySQL 各一個容器，`restart: unless-stopped` |
+| 對外連線 | Tailscale Funnel | 家用網路沒有固定 IP，靠它取得固定 HTTPS 網址（取代 ngrok） |
+| 作業系統 | Ubuntu Server（舊筆電） | 24 小時運作的伺服器，已關閉睡眠與闔蓋休眠 |
+| 備份 | mysqldump、rclone（crypt）、cron | 每天備份並加密上傳 Google Drive |
+| 監控 | Healthchecks.io、cron | 每 5 分鐘檢查整條路徑，異常或失聯都會通知 |
+| 版本控制 | Git、GitHub | 原始碼管理 |
+| 開發工具 | VS Code、Claude Code | 開發環境與 AI 輔助開發 |
+
+--- | :--- |
 | 後端 | Node.js 20、Express 5（routes / controllers / middlewares / services 分層） |
 | 資料庫 | MySQL 8 + Prisma ORM 5 |
 | 安全 | JWT、bcrypt、helmet（CSP）、cors、express-rate-limit |
@@ -256,6 +278,8 @@ npm run dev                        # http://localhost:3001
 目前的實際部署方式（一台舊筆電 + 家用網路），供參考：
 
 ### 1. 對外連線（Tailscale Funnel）
+
+**Tailscale 的用途**：讓放在家裡的筆電，不用開路由器 Port、不需要固定 IP 或網域，就能被員工的手機從外面連到。Funnel 會給一個固定的 `https://<機器名>.<tailnet>.ts.net` 網址、自動處理 HTTPS 憑證，並把流量轉到本機的 3001 port。因此 MySQL 與後端都只需綁定 `127.0.0.1`，對外唯一入口就是這個網址。
 
 ```bash
 curl -fsSL https://tailscale.com/install.sh | sh
@@ -328,7 +352,7 @@ scripts/test.sh
 | `tests/dayoff.test.js` | 13 | 休假計算（到職日、今天、離職）、薪資休假天數、指定日期查詢 |
 | `tests/salary.test.js` | 14 | 薪資金額：四捨五入、加班不加成、未下班與跨月不計、補登標記、時薪 0、未打下班卡會被列出；調整時薪不影響過去月份、月中調薪依日期套用、重複儲存不產生多餘紀錄、刪除員工連動刪除時薪歷史 |
 | `tests/export.test.js` | 9 | Excel 報表：下載權限與格式驗證、真實 .xlsx 檔、應發薪資與每人明細內容（金額與彙總一致、未打下班卡標示、月中調薪註記、分頁名稱合法且不重複） |
-| `tests/csv.test.js` | 6 | Excel 匯出（BOM、跳脫、防止試算表公式注入） |
+| `tests/csv.test.js` | 6 | CSV 匯出（BOM、跳脫、防止試算表公式注入） |
 
 ---
 
